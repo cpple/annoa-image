@@ -2,6 +2,9 @@
   "targets": [
     {
       "target_name": "annoa_image",
+      'variables': {
+        'runtime_link%': 'annoa_image'
+      },
       "sources": [
         "./src/image.cc",
         "./src/tools/tool.cpp"
@@ -37,6 +40,47 @@
           ],
         }],
       ],
+      'configurations': {
+        'Release': {
+          'conditions': [
+            ['OS == "linux"', {
+              'cflags_cc': [
+                '-Wno-cast-function-type'
+              ]
+            }],
+            ['target_arch == "arm"', {
+              'cflags_cc': [
+                '-Wno-psabi'
+              ]
+            }],
+            ['OS == "win"', {
+              'msvs_settings': {
+                'VCCLCompilerTool': {
+                  'ExceptionHandling': 1,
+                  'WholeProgramOptimization': 'true'
+                },
+                'VCLibrarianTool': {
+                  'AdditionalOptions': [
+                    '/LTCG:INCREMENTAL'
+                  ]
+                },
+                'VCLinkerTool': {
+                  'ImageHasSafeExceptionHandlers': 'false',
+                  'OptimizeReferences': 2,
+                  'EnableCOMDATFolding': 2,
+                  'LinkIncremental': 1,
+                  'AdditionalOptions': [
+                    '/LTCG:INCREMENTAL'
+                  ]
+                }
+              },
+              'msvs_disabled_warnings': [
+                4275
+              ]
+            }]
+          ]
+        }
+      },
     },
     {
     "target_name": "action_after_build",

@@ -1,0 +1,61 @@
+language: node_js
+
+services:
+- docker
+
+env:
+- LINUX_CXX=g++-4.8
+
+os:
+- linux
+- osx
+
+arch:
+- amd64
+- arm64
+
+node_js:
+- '10'
+- '11'
+- '12'
+- '13'
+- '14'
+- '15'
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - g++-4.8
+    - bc
+
+before_install:
+- echo Building for Node $TRAVIS_NODE_VERSION
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX=$LINUX_CXX; $CXX --version;
+  fi;
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then c++ --version; fi;
+- npm install -g npm@latest
+
+install: true
+
+script:
+- npm test
+- "./node_modules/.bin/node-pre-gyp configure"
+- "./node_modules/.bin/node-pre-gyp build"
+- "./node_modules/.bin/node-pre-gyp package"
+- |
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]
+  then
+    docker run -w /src --entrypoint /bin/sh -v`pwd`:/src "node:${TRAVIS_NODE_VERSION}-alpine" test_alpine.sh
+  fi
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+file_glob: true
+  file: build/stage/cpple/annoa-image/releases/download/*/*
+  on:
+    node_js: '14'
+    repo: cpple/annoa-image
+    tags: true

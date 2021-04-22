@@ -1,8 +1,9 @@
 {
   "name": "annoa-image",
-  "version": "1.7.4",
+  "version": "1.7.10",
+  "deprecated": false,
   "description": "annoa-image",
-  "main": "index.js",
+  "main": "image.js",
   "keywords": [
     "annoa"
   ],
@@ -10,8 +11,19 @@
     "node": ">= 14.0.0"
   },
   "scripts": {
-    "test": "npm install --build-from-source",
+    "test": "npm install --build-from-source && semistandard && cpplint",
     "install": "node-pre-gyp install --fallback-to-build"
+  },
+  "files": [
+    "binding.gyp",
+    "image.js",
+    "include/**",
+    "src/**"
+  ],
+  "semistandard": {
+    "env": [
+      "mocha"
+    ]
   },
   "repository": {
     "type": "git",
