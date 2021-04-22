@@ -1,14 +1,17 @@
 {
   "targets": [
     {
-      "target_name": "annoa-image",
+      "target_name": "annoa_image",
       "sources": [
         "./src/image.cc",
         "./src/tools/tool.cpp"
        ],
-      "include_dirs": ["./include"],
       'cflags!': [ '-fno-exceptions' ],
       'cflags_cc!': [ '-fno-exceptions' ],
+      'include_dirs' : [
+          "<!@(node -p \"require('node-addon-api').include\")"
+      ],
+      'dependencies': ["<!(node -p \"require('node-addon-api').gyp\")"],
       'defines': [
             '_GNU_SOURCE',
       ],
@@ -18,10 +21,7 @@
             "VCCLCompilerTool": {
               "ExceptionHandling": 1
             }
-          },
-          'defines': [
-            'uint=unsigned int',
-          ]
+          }
         }],
         ['OS=="mac"', {
           'cflags+': ['-fvisibility=hidden'],

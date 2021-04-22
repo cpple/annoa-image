@@ -1,2 +1,2 @@
-let image = require('./lib/image');
+let image = require('./image');
 module.exports = image;

@@ -1,6 +1,6 @@
 {
   "name": "annoa-image",
-  "version": "1.7.1",
+  "version": "1.7.3",
   "description": "annoa-image",
   "main": "index.js",
   "keywords": [
@@ -11,7 +11,7 @@
   },
   "scripts": {
     "test": "npm install --build-from-source",
-    "install": "node-pre-gyp install --fallback-to-build"
+    "install": "node-pre-gyp rebuild"
   },
   "repository": {
     "type": "git",
@@ -24,7 +24,7 @@
   "author": "cpple@hotmail.com",
   "license": "Apache-2.0",
   "binary": {
-    "module_name": "annoa-image",
+    "module_name": "annoa_image",
     "module_path": "./lib/binding/napi-v{napi_build_version}",
     "package_name": "{module_name}-v{version}-napi-v{napi_build_version}-{platform}-{arch}-{libc}.tar.gz",
     "host": "https://github.com",
