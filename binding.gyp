@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "target_name": "image",
+      "target_name": "annoa-image",
       "sources": [
         "./src/image.cc",
         "./src/tools/tool.cpp"
