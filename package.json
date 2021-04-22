@@ -1,0 +1,36 @@
+{
+  "name": "annoa-image",
+  "version": "1.5.0",
+  "description": "annoa-image",
+  "main": "index.js",
+  "keywords": [
+    "annoa"
+  ],
+  "engines": {
+    "node": ">= 10.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node-pre-gyp install --fallback-to-build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cpple/annoa-image.git"
+  },
+  "dependencies": {
+    "@mapbox/node-pre-gyp": "^1.0.2",
+    "node-addon-api": "^3.1.0"
+  },
+  "author": "cpple@hotmail.com",
+  "license": "Apache-2.0",
+  "binary": {
+    "module_name": "annoa-image",
+    "module_path": "./lib/binding/napi-v{napi_build_version}",
+    "package_name": "{module_name}-v{version}-napi-v{napi_build_version}-{platform}-{arch}-{libc}.tar.gz",
+    "host": "https://github.com",
+    "remote_path": "cpple/annoa-image/releases/download/v{version}",
+    "napi_versions": [
+      3
+    ]
+  }
+}
