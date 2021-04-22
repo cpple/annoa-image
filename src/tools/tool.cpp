@@ -67,7 +67,7 @@ void uint8_to_float_random_crop_hori_norm_kernel_cpu_(const int n, const float s
 
 		int spDim = w * h;
 		int bDim = w * h * c;
-
+        
 		int batch = index / bDim;
 		int tmpBIdx = (index % bDim);
 		int channels = tmpBIdx / spDim;
@@ -99,11 +99,14 @@ void uint8_to_float_random_crop_hori_norm_kernel_cpu_(const int n, const float s
 				v = (v - m[channels]) / s[channels];
 			}
 		}
+        int tmpIndex = index;
 		if (hori) {
+            //printf(":%d \n", outW);
 			outW = (w - 1) - outW;
-			index = batch * bDim + channels * spDim + outH * (int)w + outW;
+            tmpIndex = batch * bDim + channels * spDim + outH * (int)w + outW;
+            //printf("CPU_KERNEL_LOOP:%d %d %d %d %d %d %d \n", batch, bDim, channels, spDim, outH, w, outW);
 		}
-		y[index] = v;
+		y[tmpIndex] = v;
 	}
 }
 
@@ -158,11 +161,12 @@ void uint8_to_float_random_crop_hori_norm_o_kernel_cpu_(const int n, const float
 				v = (v - m[channels]) / s[channels];
 			}
 		}
+        int tmpIndex = index;
 		if (hori) {
 			outW = (w - 1) - outW;
-			index = batch * bDim + c * outH * (int)w + outW * c + channels;
+            tmpIndex = batch * bDim + c * outH * (int)w + outW * c + channels;
 		}
-		y[index] = v;
+		y[tmpIndex] = v;
 	}
 }
 

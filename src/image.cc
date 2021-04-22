@@ -163,7 +163,7 @@ namespace annoa
 			UINT32 picDim = Bw * Bh;
 
             Napi::Uint8Array outData = Napi::Uint8Array::New(env, spDim);
-			UINT8 * result = (UINT8*)outData.ArrayBuffer().Data();;
+			UINT8 * result = reinterpret_cast<UINT8*>(outData.ArrayBuffer().Data());
 
 			capture_bbox_img_cpu(picDim, img_data, channels, width, height, x1, y1, Bw, Bh, result);
             Napi::Object obj = Napi::Object::New(env);
@@ -181,46 +181,35 @@ namespace annoa
 	{
         Napi::Env env = args.Env();
 
-		if (args.Length() < 1)
-		{throw Napi::TypeError::New(env, "Wrong number of arguments");
+		if (args.Length() < 2)
+		{
+		    throw Napi::TypeError::New(env, "Wrong number of arguments");
 		}
 
-		if (!args[0].IsUint8Array() && !args[0].IsUint8ClampedArray())
+		if (!IsTypeArray(args[0], napi_uint8_array))
 		{
-			throw Napi::TypeError::New(env, "Wrong arguments", NewStringType::kNormal).ToLocalChecked()));
-			return;
+			throw Napi::TypeError::New(env, "Wrong arguments");
 		}
 
 		float scale = 1.0f;
 		if (args[1].IsNumber())
 		{
-			scale = static_cast<float>(args[1].NumberValue(context).ToChecked());
+			scale = args[1].ToNumber().FloatValue();
 		}
 		UINT8* img_data = nullptr;
 		UINT32 length = 0;
 
-		if (args[0].IsUint8Array())
-		{
-			Local<Uint8Array> imgU8 = Local<Uint8Array>::Cast(args[0].ToObject(context).ToLocalChecked());
-			length = imgU8->Length();
-			img_data = (UINT8*)imgU8->Buffer()->GetBackingStore()->Data();
-		}
-
-		if (args[0].IsUint8ClampedArray())
-		{
-			Local<Uint8ClampedArray> imgUC8 = Local<Uint8ClampedArray>::Cast(args[0].ToObject(context).ToLocalChecked());
-			length = imgUC8->Length();
-			img_data = (UINT8*)imgUC8->Buffer()->GetBackingStore()->Data();
-		}
+        Napi::Uint8Array imgU8 = args[0].As<Napi::Uint8Array>();
+        length = imgU8.ElementLength();
+        img_data = reinterpret_cast<UINT8*>(imgU8.ArrayBuffer().Data());
 
 		UINT32 bytes = length * sizeof(float);
-		Local<ArrayBuffer> out = ArrayBuffer::New(isolate, bytes);
-		Local<Float32Array> outData = Float32Array::New(out, 0, length);
-		float * result = (float*)out->GetBackingStore()->Data();
+        Napi::Float32Array out = Napi::Float32Array::New(env, length);
+		float * result = reinterpret_cast<float*>(out.ArrayBuffer().Data());
 
 		uint8_to_float_convert_cpu(length, scale, img_data, result);
 
-		args.GetReturnValue().Set(outData);
+		return out;
 	}
 
 	Napi::Value imgRandomCropHorizontalFlipNormalize(const Napi::CallbackInfo& args)
@@ -228,16 +217,16 @@ namespace annoa
         Napi::Env env = args.Env();
 
 		if (args.Length() < 13)
-		{throw Napi::TypeError::New(env, "Wrong number of arguments");
+		{
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
 		}
 
-		if (!args[0].IsUint8Array() && !args[0].IsUint8ClampedArray() || !args[1].IsNumber() || !args[2].IsNumber() || !args[3].IsNumber() ||
+		if (!IsTypeArray(args[0], napi_uint8_array) || !args[1].IsNumber() || !args[2].IsNumber() || !args[3].IsNumber() ||
 			!args[4].IsNumber() || !args[5].IsNumber() || !args[6].IsNumber() || !args[7].IsNumber() || !args[8].IsBoolean() || !args[9].IsBoolean() || !args[10].IsBoolean() ||
-			(!args[11].IsNullOrUndefined() && !args[11].IsFloat32Array()) ||
-			(!args[12].IsNullOrUndefined() && !args[12].IsFloat32Array()))
+			(!(args[11].IsNull() || args[11].IsUndefined()) && !IsTypeArray(args[11], napi_float32_array)) ||
+			(!(args[11].IsNull() || args[11].IsUndefined()) && !IsTypeArray(args[11], napi_float32_array)))
 		{
-			throw Napi::TypeError::New(env, "Wrong arguments", NewStringType::kNormal).ToLocalChecked()));
-			return;
+			throw Napi::TypeError::New(env, "Wrong arguments");
 		}
 		UINT8* img_data = nullptr;
 		UINT32 length = 0;
@@ -246,30 +235,20 @@ namespace annoa
 		UINT32 lengthNew = 0;
 		UINT32 channels = 0;
 
-		if (args[0].IsUint8Array())
-		{
-			Local<Uint8Array> imgU8 = Local<Uint8Array>::Cast(args[0].ToObject(context).ToLocalChecked());
-			length = imgU8->Length();
-			img_data = (UINT8*)imgU8->Buffer()->GetBackingStore()->Data();
-		}
+        Napi::Uint8Array imgU8 = args[0].As<Napi::Uint8Array>();
+        length = imgU8.ElementLength();
+        img_data = reinterpret_cast<UINT8*>(imgU8.ArrayBuffer().Data());
 
-		if (args[0].IsUint8ClampedArray())
-		{
-			Local<Uint8ClampedArray> imgUC8 = Local<Uint8ClampedArray>::Cast(args[0].ToObject(context).ToLocalChecked());
-			length = imgUC8->Length();
-			img_data = (UINT8*)imgUC8->Buffer()->GetBackingStore()->Data();
-		}
-
-		float scale = static_cast<float>(args[1].NumberValue(context).ToChecked());
-		UINT32 batch = static_cast<UINT32>(args[2].NumberValue(context).ToChecked());
-		UINT32 oh = static_cast<UINT32>(args[3].NumberValue(context).ToChecked());
-		UINT32 ow = static_cast<UINT32>(args[4].NumberValue(context).ToChecked());
-		UINT32 h = static_cast<UINT32>(args[5].NumberValue(context).ToChecked());
-		UINT32 w = static_cast<UINT32>(args[6].NumberValue(context).ToChecked());
-		UINT32 p = static_cast<UINT32>(args[7].NumberValue(context).ToChecked());
-		bool channelFirst = args[8].As<v8::Boolean>()->Value();
-		bool hori = args[9].As<v8::Boolean>()->Value();
-		bool norm = args[10].As<v8::Boolean>()->Value();
+		float scale = args[1].ToNumber().FloatValue();
+		UINT32 batch = args[2].ToNumber().Uint32Value();
+		UINT32 oh = args[3].ToNumber().Uint32Value();
+		UINT32 ow = args[4].ToNumber().Uint32Value();
+		UINT32 h = args[5].ToNumber().Uint32Value();
+		UINT32 w = args[6].ToNumber().Uint32Value();
+		UINT32 p = args[7].ToNumber().Uint32Value();
+		bool channelFirst = args[8].ToBoolean().Value();
+		bool hori = args[9].ToBoolean().Value();
+		bool norm = args[10].ToBoolean().Value();
 		float* mean = nullptr;
 		float* stdv = nullptr;
 		std::random_device rd;
@@ -280,53 +259,44 @@ namespace annoa
 
 		channels = length / (oh * ow * batch);
 		lengthNew = h * w * channels * batch;
-		if (norm && args[11].IsFloat32Array() && args[12].IsFloat32Array()) {
+		if (norm && IsTypeArray(args[11], napi_float32_array) && IsTypeArray(args[12], napi_float32_array)) {
 
-			Local<Float32Array> mean_ = Local<Float32Array>::Cast(args[11].ToObject(context).ToLocalChecked());
-			lengthM = mean_->Length();
-			mean = (float*)mean_->Buffer()->GetBackingStore()->Data();
-			Local<Float32Array> std_ = Local<Float32Array>::Cast(args[12].ToObject(context).ToLocalChecked());
-			lengthS = std_->Length();
-			stdv = (float*)std_->Buffer()->GetBackingStore()->Data();
+            Napi::Float32Array mean_ = args[11].As<Napi::Float32Array>();
+			lengthM = mean_.ElementLength();
+			mean = reinterpret_cast<float*>(mean_.ArrayBuffer().Data());
+            Napi::Float32Array std_ = args[12].As<Napi::Float32Array>();
+			lengthS = std_.ElementLength();
+			stdv = reinterpret_cast<float*>(std_.ArrayBuffer().Data());
 			if (channels != lengthM || channels != lengthS) {
 
-				throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels != lengthS", NewStringType::kNormal).ToLocalChecked()));
-				return;
+				throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels != lengthS");
 			}
 		}
 
 		if (oh <= p || ow <= p) {
 
-			throw Napi::TypeError::New(env, "Wrong arguments oh + p < h", NewStringType::kNormal).ToLocalChecked()));
-			return;
+			throw Napi::TypeError::New(env, "Wrong arguments oh + p < h");
 		}
 
 		if (oh + p < h) {
 
-			throw Napi::TypeError::New(env, "Wrong arguments oh + p < h", NewStringType::kNormal).ToLocalChecked()));
-			return;
+			throw Napi::TypeError::New(env, "Wrong arguments oh + p < h");
 		}
 
 		if (ow + p < w) {
 
-			throw Napi::TypeError::New(env, "Wrong arguments ow + p < w", NewStringType::kNormal).ToLocalChecked()));
-			return;
+			throw Napi::TypeError::New(env, "Wrong arguments ow + p < w");
 		}
 
 		if (channels < 1 && channels > 4) {
 
-			throw Napi::TypeError::New(env, "Wrong arguments channels < 1 && channels > 4", NewStringType::kNormal).ToLocalChecked()));
-			return;
+			throw Napi::TypeError::New(env, "Wrong arguments channels < 1 && channels > 4");
 		}
 		UINT32 sh = rd() % ((oh + 2 * p) - h);
 		UINT32 sw = rd() % ((ow + 2 * p) - w);
 
-		UINT32 bytes = length * sizeof(UINT8);
-		UINT32 bytesNew = lengthNew * sizeof(float);
-		UINT32 bytesM = lengthM * sizeof(float);
-		Local<ArrayBuffer> out = ArrayBuffer::New(isolate, bytesNew);
-		Local<Float32Array> outData = Float32Array::New(out, 0, lengthNew);
-		float* result = (float*)out->GetBackingStore()->Data();
+        Napi::Float32Array outData = Napi::Float32Array::New(env, lengthNew);
+		float* result = (float*)outData.ArrayBuffer().Data();
 
 		if (channelFirst)
 		{
@@ -338,13 +308,13 @@ namespace annoa
 		}
 		double moveHeight = static_cast<double>(sh) - static_cast<double>(p);
 		double moveWidth = static_cast<double>(sw) - static_cast<double>(p);
-		Local<Object> obj = Object::New(isolate);
-		obj->Set(context, String::NewFromUtf8(isolate, "flip", NewStringType::kNormal).ToLocalChecked(), Boolean::New(isolate, static_cast<bool>(hori)));
-		obj->Set(context, String::NewFromUtf8(isolate, "moveHeight", NewStringType::kNormal).ToLocalChecked(), Number::New(isolate, -moveHeight));
-		obj->Set(context, String::NewFromUtf8(isolate, "moveWidth", NewStringType::kNormal).ToLocalChecked(), Number::New(isolate, -moveWidth));
-		obj->Set(context, String::NewFromUtf8(isolate, "data", NewStringType::kNormal).ToLocalChecked(), outData);
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("flip", static_cast<bool>(hori));
+        obj.Set("moveHeight", -moveHeight);
+        obj.Set("moveWidth", -moveWidth);
+        obj.Set("data", outData);
 
-		args.GetReturnValue().Set(obj);
+        return obj;
 	}
 
 	Napi::Value imgNormalize(const Napi::CallbackInfo& args)
@@ -352,75 +322,60 @@ namespace annoa
         Napi::Env env = args.Env();
 
 		if (args.Length() < 5)
-		{throw Napi::TypeError::New(env, "Wrong number of arguments");
-		}
-
-		if (!args[0].IsUint8Array() && !args[0].IsUint8ClampedArray() || !args[1].IsNumber() || !args[2].IsNumber() ||
-			!args[3].IsFloat32Array() ||
-			!args[4].IsFloat32Array())
 		{
-			throw Napi::TypeError::New(env, "Wrong arguments", NewStringType::kNormal).ToLocalChecked()));
-			return;
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
 		}
 
-		float scale = static_cast<float>(args[1].NumberValue(context).ToChecked());
-		int batch = static_cast<int>(args[2].NumberValue(context).ToChecked());
-		UINT8* img_data = nullptr;
-		UINT32 length = 0;
-
-		if (args[0].IsUint8Array())
+		if (!IsTypeArray(args[0], napi_uint8_array) || !args[1].IsNumber() || !args[2].IsNumber() ||
+			!IsTypeArray(args[3], napi_float32_array) ||
+			!IsTypeArray(args[4], napi_float32_array))
 		{
-			Local<Uint8Array> imgU8 = Local<Uint8Array>::Cast(args[0].ToObject(context).ToLocalChecked());
-			length = imgU8->Length();
-			img_data = (UINT8*)imgU8->Buffer()->GetBackingStore()->Data();
+			throw Napi::TypeError::New(env, "Wrong arguments");
 		}
 
-		if (args[0].IsUint8ClampedArray())
-		{
-			Local<Uint8ClampedArray> imgUC8 = Local<Uint8ClampedArray>::Cast(args[0].ToObject(context).ToLocalChecked());
-			length = imgUC8->Length();
-			img_data = (UINT8*)imgUC8->Buffer()->GetBackingStore()->Data();
-		}
+		float scale = args[1].ToNumber().FloatValue();
+        UINT32 batch = args[2].ToNumber().Uint32Value();
 
-		Local<Float32Array> mean_ = Local<Float32Array>::Cast(args[3].ToObject(context).ToLocalChecked());
-		int lengthM = mean_->Length();
-		const float* mean = (float*)mean_->Buffer()->GetBackingStore()->Data();
-		Local<Float32Array> std_ = Local<Float32Array>::Cast(args[4].ToObject(context).ToLocalChecked());
-		int lengthS = std_->Length();
-		const float* stdv = (float*)std_->Buffer()->GetBackingStore()->Data();
+        Napi::Uint8Array imgU8 = args[0].As<Napi::Uint8Array>();
+        UINT32 length = imgU8.ElementLength();
+        UINT8* img_data = reinterpret_cast<UINT8*>(imgU8.ArrayBuffer().Data());
+
+        Napi::Float32Array mean_ = args[3].As<Napi::Float32Array>();
+        UINT32 lengthM = mean_.ElementLength();
+        float* mean = reinterpret_cast<float*>(mean_.ArrayBuffer().Data());
+        Napi::Float32Array std_ = args[4].As<Napi::Float32Array>();
+        UINT32 lengthS = std_.ElementLength();
+        float* stdv = reinterpret_cast<float*>(std_.ArrayBuffer().Data());
 		if (lengthM != lengthS) {
 
-			throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels != lengthS", NewStringType::kNormal).ToLocalChecked()));
-			return;
+			throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels != lengthS");
 		}
 
-		UINT32 bytes = length * sizeof(float);
-		UINT32 bytesM = lengthM * sizeof(float);
-		Local<ArrayBuffer> out = ArrayBuffer::New(isolate, bytes);
-		Local<Float32Array> outData = Float32Array::New(out, 0, length);
-		float* result = (float*)out->GetBackingStore()->Data();
-		//printf("SolverHandler:%f %d %d \n", scale, batch, lengthM);
+        Napi::Float32Array outData = Napi::Float32Array::New(env, length);
+        float* result = (float*)outData.ArrayBuffer().Data();
 
 		uint8_to_float_convert_norm_cpu(length, scale, batch, lengthM, mean, stdv, img_data, result);
 
-		args.GetReturnValue().Set(outData);
+        return outData;
 	}
 
-	Napi::Value test(const FunctionCallbackInfo<Value>& args)
+	Napi::Value test(const Napi::CallbackInfo& args)
 	{
         Napi::Env env = args.Env();
 		float reslut = (float(1) + float(1));
 
-		args.GetReturnValue().Set(Number::New(isolate, double(reslut)));
+		return Napi::Number::New(env, double(reslut));
 	}
 
-    Napi::Value init(Local<Object> exports) {
-		NODE_SET_METHOD(exports, "removeAlpha", removeImgBufferAlpha);
-		NODE_SET_METHOD(exports, "captureBBImg", captureImgByBoundingBox);
-		NODE_SET_METHOD(exports, "convertNetData", convertImgDataToNetData);
-        NODE_SET_METHOD(exports, "imgRandomCropHorizontalFlipNormalize", imgRandomCropHorizontalFlipNormalize);
-        NODE_SET_METHOD(exports, "imgNormalize", imgNormalize);
-		NODE_SET_METHOD(exports, "test", test);
+    Napi::Object init(Napi::Env env, Napi::Object exports) {
+        exports.Set(Napi::String::New(env, "removeAlpha"), Napi::Function::New(env, removeImgBufferAlpha));
+        exports.Set(Napi::String::New(env, "captureBBImg"), Napi::Function::New(env, captureImgByBoundingBox));
+        exports.Set(Napi::String::New(env, "convertNetData"), Napi::Function::New(env, convertImgDataToNetData));
+        exports.Set(Napi::String::New(env, "imgRandomCropHorizontalFlipNormalize"), Napi::Function::New(env, imgRandomCropHorizontalFlipNormalize));
+        exports.Set(Napi::String::New(env, "imgNormalize"), Napi::Function::New(env, imgNormalize));
+        exports.Set(Napi::String::New(env, "test"), Napi::Function::New(env, test));
+        return exports;
     }
-    NODE_MODULE(NODE_GYP_MODULE_NAME, init)
+
+    NODE_API_MODULE(NODE_GYP_MODULE_NAME, init)
 }
