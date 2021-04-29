@@ -26,6 +26,15 @@ typedef unsigned long long UINT64;
 typedef float              FLOAT;
 typedef double             DOUBLE;
 
+struct Sharp
+{
+    Sharp(int _n, int _c, int _h, int _w) : n(_n), c(_c), h(_h), w(_w) {};
+    int w;
+    int h;
+    int c;
+    int n;
+};
+
 #define CPU_KERNEL_LOOP(i, n) \
   for (int i = 0; \
        i < (n); \

@@ -17,8 +17,11 @@ let exp = {
     imgRandomCropHorizontalFlipNormalize:function (img, scale, batch, oh, ow, h, w, p = 0, channelFirst = false, horizontal = false, normalize = false, mean = null, std = null){
         return bindings["imgRandomCropHorizontalFlipNormalize"](img, scale, batch, oh, ow, h, w, p, channelFirst, horizontal, normalize, mean, std)
     },
-    imgNormalize:function (img, scale, batch, mean, std){
-        return bindings["imgNormalize"](img, scale, batch, mean, std)
+    imgNormalize:function (img, scale, batch, mean, std, channelsFirst = true){
+        return bindings["imgNormalize"](img, scale, batch, mean, std, channelsFirst)
+    },
+    imgScale:function (img, h, w, sh, sw, batch, channelsFirst = true){
+        return bindings["imgScale"](img, h, w, sh, sw, batch, channelsFirst)
     },
     test:function (){
         return bindings["test"]()

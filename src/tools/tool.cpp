@@ -1,5 +1,3 @@
-
-#include "../../include/util.h"
 #include "../../include/tool.h"
 
 #include <time.h>
@@ -197,4 +195,160 @@ void uint8_to_float_convert_norm_kernel_cpu_(const int n, const float scale, con
 void uint8_to_float_convert_norm_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const UINT8* a, float* y) {
 
 	uint8_to_float_convert_norm_kernel_cpu_(N, scale, batch, channels, m, s, a, y);
+}
+
+void uint8_to_float_convert_norm_o_kernel_cpu_(const int n, const float scale, const UINT32 b, const UINT32 c, const float* m, const float* s, const UINT8* a, float* y) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        int channels = index % c;
+        float v = static_cast<float>(a[index]);
+        v *= scale;
+        v = (v - m[channels]) / s[channels];
+        y[index] = v;
+    }
+}
+
+void uint8_to_float_convert_norm_o_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const UINT8* a, float* y) {
+
+    uint8_to_float_convert_norm_o_kernel_cpu_(N, scale, batch, channels, m, s, a, y);
+}
+
+float get_value(
+    const UINT8* data, const Sharp& shape,
+    const unsigned int n, const unsigned int c,
+    int y, int x, const bool& cf
+) {
+    // Replicate border for 1 pixel
+    if (x == -1) x = 0;
+    if (x == shape.w) x = shape.w - 1;
+    if (y == -1) y = 0;
+    if (y == shape.h) y = shape.h - 1;
+
+    if (x >= 0 && x < shape.w && y >= 0 && y < shape.h) {
+        // N*cs*hs*ws + C*hs*ws + H*ws + W
+        if (cf)
+        {
+            return float(data[(n * shape.h * shape.w * shape.c) +
+                (y * shape.w * shape.c) + (x * shape.c) + c]);
+        }
+        else
+        {
+            return float(data[(n * shape.c * shape.h * shape.w) +
+                (c * shape.h * shape.w) + (y * shape.w) + x]);
+        }
+    }
+    else {
+        return float(0);
+    }
+}
+
+float cubic_interpolation(const float& d,
+    const float& v1, const float& v2, const float& v3, const float& v4
+) {
+    // d is [0,1], marking the distance from v2 towards v3
+    return v2 + d * (
+        -2.0 * v1 - 3.0 * v2 + 6.0 * v3 - 1.0 * v4 + d * (
+            3.0 * v1 - 6.0 * v2 + 3.0 * v3 + 0.0 * v4 + d * (
+                -1.0 * v1 + 3.0 * v2 - 3.0 * v3 + 1.0 * v4))) / 6.0;
+}
+
+
+// Interpolate in 1D space
+float interpolate_x(
+    const UINT8* data, const Sharp& shape,
+    const unsigned int n, const unsigned int c,
+    const int y, const float x, const bool& cf
+) {
+    float dx = x - floor(x);
+    return cubic_interpolation(dx,
+        get_value(data, shape, n, c, y, floor(x) - 1, cf),
+        get_value(data, shape, n, c, y, floor(x), cf),
+        get_value(data, shape, n, c, y, ceil(x), cf),
+        get_value(data, shape, n, c, y, ceil(x) + 1, cf));
+}
+
+
+// Interpolate in 2D space
+float interpolate_xy(
+    const UINT8* data, const Sharp& shape,
+    const unsigned int n, const unsigned int c,
+    const float y, const float x, const bool& cf
+) {
+    float dy = y - floor(y);
+    return cubic_interpolation(dy,
+        interpolate_x(data, shape, n, c, floor(y) - 1, x, cf),
+        interpolate_x(data, shape, n, c, floor(y), x, cf),
+        interpolate_x(data, shape, n, c, ceil(y), x, cf),
+        interpolate_x(data, shape, n, c, ceil(y) + 1, x, cf));
+}
+
+void uint8_to_uint8_scale_kernel_cpu_(const int n, const UINT8* a, const Sharp& sharp, const float sh, const float sw, UINT8* out) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        int spDim = sharp.h * sharp.w;
+        int bDim = spDim * sharp.c;
+
+        int batch = index / bDim;
+        int tmpBIdx = (index % bDim);
+        int channels = tmpBIdx / spDim;
+        int tmpCIdx = tmpBIdx % spDim;
+
+        float ph = (float(sharp.h) - sh) / float(2.0);
+        float pw = (float(sharp.w) - sw) / float(2.0);
+
+        float y = float(tmpCIdx / sharp.w) - ph;
+        float x = float(tmpCIdx % sharp.w) - pw;
+        
+        // scale
+        if (sharp.w != sw) {
+            x *= float(sharp.w - 1) / float(sw - 1);
+        }
+        if (sharp.h != sh) {
+            y *= float(sharp.h - 1) / float(sh - 1);
+        }
+        //printf("%f %f %f %f %f %f \n", y, x, ph, pw, sh, sw);
+        out[index] = static_cast<UINT8>(interpolate_xy(a, sharp, batch, channels, y, x, false));
+    }
+}
+
+void uint8_to_uint8_scale_o_kernel_cpu_(const int n, const UINT8* a, const Sharp& sharp, const float sh, const float sw, UINT8* out) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        int bDim = sharp.h * sharp.w * sharp.c;
+
+        int batch = index / bDim;
+        int tmpBIdx = (index % bDim);
+        int channels = index % sharp.c;
+        int oy = tmpBIdx / (sharp.w * sharp.c);
+        int tmpWidx = tmpBIdx % (sharp.w * sharp.c);
+        int ox = tmpWidx / sharp.c;
+
+        float ph = (float(sharp.h) - sh) / float(2.0);
+        float pw = (float(sharp.w) - sw) / float(2.0);
+
+        float y = float(oy) - ph;
+        float x = float(ox) - pw;
+
+        // scale
+        if (sharp.w != sw) {
+            x *= float(sharp.w - 1) / float(sw - 1);
+        }
+        if (sharp.h != sh) {
+            y *= float(sharp.h - 1) / float(sh - 1);
+        }
+
+        out[index] = static_cast<UINT8>(interpolate_xy(a, sharp, batch, channels, y, x, true));
+    }
+}
+
+void uint8_to_uint8_scale_cpu(const int N, const UINT8* a, const Sharp& sharp, const float sh, const float sw, UINT8* y, const bool& cf) {
+
+    if (cf)
+    {
+        uint8_to_uint8_scale_o_kernel_cpu_(N, a, sharp, sh, sw, y);
+    }
+    else
+    {
+        uint8_to_uint8_scale_kernel_cpu_(N, a, sharp, sh, sw, y);
+    }
 }

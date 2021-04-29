@@ -292,8 +292,13 @@ namespace annoa
 
 			throw Napi::TypeError::New(env, "Wrong arguments channels < 1 && channels > 4");
 		}
-		UINT32 sh = rd() % ((oh + 2 * p) - h);
-		UINT32 sw = rd() % ((ow + 2 * p) - w);
+        UINT32 sh = 0;
+        UINT32 sw = 0;
+        if (p > 0)
+        {
+            sh = rd() % ((oh + 2 * p) - h);
+            sw = rd() % ((ow + 2 * p) - w);
+        }
 
         Napi::Float32Array outData = Napi::Float32Array::New(env, lengthNew);
 		float* result = (float*)outData.ArrayBuffer().Data();
@@ -321,14 +326,14 @@ namespace annoa
 	{
         Napi::Env env = args.Env();
 
-		if (args.Length() < 5)
+		if (args.Length() < 6)
 		{
             throw Napi::TypeError::New(env, "Wrong number of arguments");
 		}
 
 		if (!IsTypeArray(args[0], napi_uint8_array) || !args[1].IsNumber() || !args[2].IsNumber() ||
 			!IsTypeArray(args[3], napi_float32_array) ||
-			!IsTypeArray(args[4], napi_float32_array))
+			!IsTypeArray(args[4], napi_float32_array) || !args[5].IsBoolean())
 		{
 			throw Napi::TypeError::New(env, "Wrong arguments");
 		}
@@ -346,6 +351,7 @@ namespace annoa
         Napi::Float32Array std_ = args[4].As<Napi::Float32Array>();
         UINT32 lengthS = std_.ElementLength();
         float* stdv = reinterpret_cast<float*>(std_.ArrayBuffer().Data());
+        //printf("%d", lengthM);
 		if (lengthM != lengthS) {
 
 			throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels != lengthS");
@@ -353,11 +359,65 @@ namespace annoa
 
         Napi::Float32Array outData = Napi::Float32Array::New(env, length);
         float* result = (float*)outData.ArrayBuffer().Data();
+        bool channelFirst = args[5].ToBoolean().Value();
 
-		uint8_to_float_convert_norm_cpu(length, scale, batch, lengthM, mean, stdv, img_data, result);
+        if (channelFirst)
+        {
+            uint8_to_float_convert_norm_o_cpu(length, scale, batch, lengthM, mean, stdv, img_data, result);
+        }
+        else
+        {
+            uint8_to_float_convert_norm_cpu(length, scale, batch, lengthM, mean, stdv, img_data, result);
+        }
 
         return outData;
 	}
+
+    Napi::Value imgScale(const Napi::CallbackInfo& args)
+    {
+        Napi::Env env = args.Env();
+
+        if (args.Length() < 7)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if (!IsTypeArray(args[0], napi_uint8_array) || !args[1].IsNumber() || !args[2].IsNumber() ||
+            !args[3].IsNumber() ||
+            !args[4].IsNumber() ||
+            !args[5].IsNumber() || !args[6].IsBoolean())
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+
+        UINT32 oh = args[1].ToNumber().Uint32Value();
+        UINT32 ow = args[2].ToNumber().Uint32Value();
+        float scaleh = args[3].ToNumber().FloatValue();
+        float scalew = args[4].ToNumber().FloatValue();
+        UINT32 batch = args[5].ToNumber().Uint32Value();
+        bool channelFirst = args[6].ToBoolean().Value();
+
+        float sh = oh * scaleh;
+        float sw = ow * scalew;
+
+        Napi::Uint8Array imgU8 = args[0].As<Napi::Uint8Array>();
+
+        if (sh == oh && ow == sw)
+        {
+            return imgU8;
+        }
+
+        UINT32 length = imgU8.ElementLength();
+        UINT32 channels = length / (batch * (oh * ow));
+        UINT8* img_data = reinterpret_cast<UINT8*>(imgU8.ArrayBuffer().Data());
+        Sharp sharp = Sharp(batch, channels, oh, ow);
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, length);
+        UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
+
+        uint8_to_uint8_scale_cpu(length, img_data, sharp, sh, sw, result, channelFirst);
+
+        return outData;
+    }
 
 	Napi::Value test(const Napi::CallbackInfo& args)
 	{
@@ -373,6 +433,7 @@ namespace annoa
         exports.Set(Napi::String::New(env, "convertNetData"), Napi::Function::New(env, convertImgDataToNetData));
         exports.Set(Napi::String::New(env, "imgRandomCropHorizontalFlipNormalize"), Napi::Function::New(env, imgRandomCropHorizontalFlipNormalize));
         exports.Set(Napi::String::New(env, "imgNormalize"), Napi::Function::New(env, imgNormalize));
+        exports.Set(Napi::String::New(env, "imgScale"), Napi::Function::New(env, imgScale));
         exports.Set(Napi::String::New(env, "test"), Napi::Function::New(env, test));
         return exports;
     }
