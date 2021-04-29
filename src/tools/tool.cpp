@@ -48,7 +48,7 @@ void capture_bbox_img_kernel_cpu_(const int n, const UINT8* a, UINT32 c, UINT32 
 			int idxr = yr * spr + xr * c + i;
 			int idxa = cy * sp + cx * c + i;
 			r[idxr] = a[idxa];
-		}   		
+		}
 	}
 }
 
@@ -65,7 +65,7 @@ void uint8_to_float_random_crop_hori_norm_kernel_cpu_(const int n, const float s
 
 		int spDim = w * h;
 		int bDim = w * h * c;
-        
+
 		int batch = index / bDim;
 		int tmpBIdx = (index % bDim);
 		int channels = tmpBIdx / spDim;
@@ -219,10 +219,6 @@ float get_value(
     int y, int x, const bool& cf
 ) {
     // Replicate border for 1 pixel
-    if (x == -1) x = 0;
-    if (x == shape.w) x = shape.w - 1;
-    if (y == -1) y = 0;
-    if (y == shape.h) y = shape.h - 1;
 
     if (x >= 0 && x < shape.w && y >= 0 && y < shape.h) {
         // N*cs*hs*ws + C*hs*ws + H*ws + W
@@ -298,7 +294,7 @@ void uint8_to_uint8_scale_kernel_cpu_(const int n, const UINT8* a, const Sharp& 
 
         float y = float(tmpCIdx / sharp.w) - ph;
         float x = float(tmpCIdx % sharp.w) - pw;
-        
+
         // scale
         if (sharp.w != sw) {
             x *= float(sharp.w - 1) / float(sw - 1);
