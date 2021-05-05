@@ -26,9 +26,9 @@ typedef unsigned long long UINT64;
 typedef float              FLOAT;
 typedef double             DOUBLE;
 
-struct Sharp
+struct Shape
 {
-    Sharp(int _n, int _c, int _h, int _w) : n(_n), c(_c), h(_h), w(_w) {};
+    Shape(int _n, int _c, int _h, int _w) : n(_n), c(_c), h(_h), w(_w) {};
     int w;
     int h;
     int c;
