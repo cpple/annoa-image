@@ -7,7 +7,7 @@ let test = async function (arrO) {
         //let result = image.imgNormalize(arrO, 1 / 255, 1, Float32Array.from([0.4914, 0.4822, 0.4465]), Float32Array.from([0.2023, 0.1994, 0.2010]), false);
         //let result = image.removeAlpha(arrO);
         //let result = image.convertNetData(arrO, 1/255);
-        let result = image.imgScale(arrO, 9, 9, 1.4, 1.4, 1, true);
+        let result = image.imgScale(arrO, 9, 9, 0.6, 0.6, 1, true);
 
         console.error(JSON.stringify(result));
         console.error(JSON.stringify(Array.from(result)));

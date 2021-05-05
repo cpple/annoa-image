@@ -1,6 +1,6 @@
 {
   "name": "annoa-image",
-  "version": "1.7.17",
+  "version": "1.7.23",
   "deprecated": false,
   "description": "annoa-image",
   "main": "image.js",
