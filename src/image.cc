@@ -410,11 +410,56 @@ namespace annoa
         UINT32 length = imgU8.ElementLength();
         UINT32 channels = length / (batch * (oh * ow));
         UINT8* img_data = reinterpret_cast<UINT8*>(imgU8.ArrayBuffer().Data());
-        Sharp sharp = Sharp(batch, channels, oh, ow);
+        Shape sharp = Shape(batch, channels, oh, ow);
         Napi::Uint8Array outData = Napi::Uint8Array::New(env, length);
         UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
 
         uint8_to_uint8_scale_cpu(length, img_data, sharp, sh, sw, result, channelFirst);
+
+        return outData;
+    }
+
+    Napi::Value imgColorHSV(const Napi::CallbackInfo& args)
+    {
+        Napi::Env env = args.Env();
+
+        if (args.Length() < 7)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if (!IsTypeArray(args[0], napi_uint8_array) || !args[1].IsNumber() || !args[2].IsNumber() ||
+            !args[3].IsNumber() ||
+            !args[4].IsNumber() ||
+            !args[5].IsNumber() ||
+            !args[6].IsNumber() || !args[7].IsBoolean())
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+
+        UINT32 oh = args[1].ToNumber().Uint32Value();
+        UINT32 ow = args[2].ToNumber().Uint32Value();
+        float hue = args[3].ToNumber().FloatValue();
+        float sat = args[4].ToNumber().FloatValue();
+        float val = args[5].ToNumber().FloatValue();
+        UINT32 batch = args[6].ToNumber().Uint32Value();
+        bool channelFirst = args[7].ToBoolean().Value();
+        
+        Napi::Uint8Array imgU8 = args[0].As<Napi::Uint8Array>();
+        
+        UINT32 length = imgU8.ElementLength();
+        UINT32 pixels = batch * (oh * ow);
+        UINT32 channels = length / pixels;
+        if (channels < 3 || channels > 4)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+        UINT8* img_data = reinterpret_cast<UINT8*>(imgU8.ArrayBuffer().Data());
+        Shape sharp = Shape(batch, channels, oh, ow);
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, length);
+        UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
+
+        uint8_to_uint8_color_cpu(pixels, img_data, sharp, hue, sat, val, result, channelFirst);
 
         return outData;
     }
@@ -434,6 +479,7 @@ namespace annoa
         exports.Set(Napi::String::New(env, "imgRandomCropHorizontalFlipNormalize"), Napi::Function::New(env, imgRandomCropHorizontalFlipNormalize));
         exports.Set(Napi::String::New(env, "imgNormalize"), Napi::Function::New(env, imgNormalize));
         exports.Set(Napi::String::New(env, "imgScale"), Napi::Function::New(env, imgScale));
+        exports.Set(Napi::String::New(env, "imgColorHSV"), Napi::Function::New(env, imgColorHSV));
         exports.Set(Napi::String::New(env, "test"), Napi::Function::New(env, test));
         return exports;
     }

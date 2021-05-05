@@ -23,6 +23,9 @@ let exp = {
     imgScale:function (img, h, w, sh, sw, batch, channelsFirst = true){
         return bindings["imgScale"](img, h, w, sh, sw, batch, channelsFirst)
     },
+    imgColorHSV:function (img, batch, h, w, hue = 0, sat = 1, val = 1, channelsFirst = true){
+        return bindings["imgColorHSV"](img, h, w, hue, sat, val, batch, channelsFirst)
+    },
     test:function (){
         return bindings["test"]()
     },
