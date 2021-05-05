@@ -8,7 +8,7 @@ let test = async function (arrO) {
         //let result = image.removeAlpha(arrO);
         //let result = image.convertNetData(arrO, 1/255);
         //let result = image.imgScale(arrO, 9, 9, 1.4, 1.4, 1, true);
-        let result = image.imgColorHSV(arrO, 9, 9, 0, 1, 3, 1, true);
+        let result = image.imgColorHSV(arrO, 1, 9, 9, 0, 1, 3, true);
 
         console.error(JSON.stringify(result));
         console.error(JSON.stringify(Array.from(result)));
