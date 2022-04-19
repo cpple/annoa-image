@@ -8,13 +8,26 @@ let test = async function (arrO) {
         //let result = image.removeAlpha(arrO);
         //let result = image.convertNetData(arrO, 1/255);
         //let result = image.imgScale(arrO, 9, 9, 1.4, 1.4, 1, true);
-        let result = image.imgColorHSV(arrO, 1, 9, 9, 0, 1, 3, true);
+        //let result = image.imgColorHSV(arrO, 1, 9, 9, 0, 1, 3, true);
+        let image = new image.Image(3,3,3);
+        let array = Uint8Array.from([
+            1,1,1, 2,2,2, 3,3,3,
+            4,4,4, 5,5,5, 6,6,6,
+            7,7,7, 8,8,8, 9,9,9,
+        ])
+        image.SetNHWCData(array);
 
-        console.error(JSON.stringify(result));
-        console.error(JSON.stringify(Array.from(result)));
+        let nchw = image.GetNCHWData();
+        console.error(nchw);
+        image.SetNCHWData(nchw);
+        let nhwc = image.GetNHWCData();
+        console.error(nhwc);
+
+        // console.error(JSON.stringify(image.GetNCHWData()));
+        // console.error(JSON.stringify(Array.from(result)));
     } catch (err) {
 
-        console.error(JSON.stringify(err));
+        console.error(err);
     }
 };
 
@@ -111,7 +124,7 @@ let mainTest = function () {
         110,120,130,110,120,130,110,120,130,111,121,131,111,121,131,111,121,131,
         110,120,130,110,120,130,110,120,130,111,121,131,111,121,131,111,121,131,
     ]
-    console.log(JSON.stringify(rma));
+    //console.log(JSON.stringify(rma));
     //test(Uint8Array.from(rma));
     test(Uint8Array.from(rma));
 };

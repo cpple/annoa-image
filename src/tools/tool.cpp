@@ -2,6 +2,86 @@
 
 #include <time.h>
 
+void nchw_to_nhwc_kernel_cpu_(const int n, const int c, const int h, const int w, const UINT8* a, UINT8* y) {
+    //int b_;
+    //int p_index;
+    //int c_;
+    //int w_;
+    //int h_;
+    //int y_index;
+    //CPU_KERNEL_LOOP(index, n) {
+
+    //    b_ = index / (h * w * c);
+    //    p_index = index % (h * w * c);
+    //    c_ = p_index % c;
+    //    w_ = (p_index / c) % w;
+    //    h_ = (p_index / (c * w)) % h;
+    //    y_index = (b_ * c * h * w) + (c_ * h * w) + (h_ * w) + w_;
+    //    y[y_index] = a[index];
+    //}
+    CPU_KERNEL_LOOP(index, n) {
+
+        int b_ = index / (h * w);
+        int mini_size = c * h * w;
+        int mini_idx = index % (h * w);
+        //int w_ = mini_idx % w;
+        //int h_ = mini_idx / w;
+
+        //imageData[i] = sourceData[i * c];//r
+        //imageData[i + 1 * h * w] = sourceData[i * c + 1];//g
+        //imageData[i + 2 * h * w] = sourceData[i * c + 2];//b
+        //imageData[i + 3 * h * w] = sourceData[i * c + 3];//b
+        for (int c_ = 0; c_ < c; c_++) {
+            y[b_ * mini_size + mini_idx * c + c_] = a[b_ * mini_size + mini_idx + c_ * h * w];
+        }
+    }
+}
+
+void nchw_to_nhwc_cpu(const int N, const int c, const int h, const int w, const UINT8* a, UINT8* y) {
+    // NOLINT_NEXT_LINE(whitespace/operators)
+    nchw_to_nhwc_kernel_cpu_(N, c, h, w, a, y);
+}
+
+void nhwc_to_nchw_kernel_cpu_(const int n, const int c, const int h, const int w, const UINT8* a, UINT8* y) {
+    //int b_;
+    //int p_index;
+    //int c_;
+    //int w_;
+    //int h_;
+    //int y_index;
+    //CPU_KERNEL_LOOP(index, n) {
+
+    //    b_ = index / (h * w * c);
+    //    p_index = index % (h * w * c);
+    //    c_ = p_index % c;
+    //    w_ = (p_index / c) % w;
+    //    h_ = (p_index / (c * w)) % h;
+    //    y_index = (b_ * c * h * w) + (c_ * h * w) + (h_ * w) + w_;
+    //    y[y_index] = a[index];
+    //}
+    CPU_KERNEL_LOOP(index, n) {
+
+        int b_ = index / (h * w);
+        int mini_size = c * h * w;
+        int mini_idx = index % (h * w);
+        //int w_ = mini_idx % w;
+        //int h_ = mini_idx / w;
+
+        //imageData[i] = sourceData[i * c];//r
+        //imageData[i + 1 * h * w] = sourceData[i * c + 1];//g
+        //imageData[i + 2 * h * w] = sourceData[i * c + 2];//b
+        //imageData[i + 3 * h * w] = sourceData[i * c + 3];//b
+        for (int c_ = 0; c_ < c; c_++) {
+            y[b_ * mini_size + mini_idx + c_ * h * w] = a[b_ * mini_size + mini_idx * c + c_];
+        }
+    }
+}
+
+void nhwc_to_nchw_cpu(const int N, const int c, const int h, const int w, const UINT8* a, UINT8* y) {
+    // NOLINT_NEXT_LINE(whitespace/operators)
+    nhwc_to_nchw_kernel_cpu_(N, c, h, w, a, y);
+}
+
 void remove_alpha_kernel_cpu_(const int n, const UINT8* a, UINT8* y) {
 	CPU_KERNEL_LOOP(index, n) {
 		int r = index * 3;
@@ -15,6 +95,17 @@ void remove_alpha_kernel_cpu_(const int n, const UINT8* a, UINT8* y) {
 void remove_alpha_cpu(const int N, const UINT8* a, UINT8* y) {
 	// NOLINT_NEXT_LINE(whitespace/operators)
 	remove_alpha_kernel_cpu_(N, a, y);
+}
+
+void remove_alpha_chw_kernel_cpu_(const int n, const UINT8* a, UINT8* y) {
+    CPU_KERNEL_LOOP(index, n) {
+        y[index] = a[index];
+    }
+}
+
+void remove_alpha_chw_cpu(const int N, const UINT8* a, UINT8* y) {
+    // NOLINT_NEXT_LINE(whitespace/operators)
+    remove_alpha_chw_kernel_cpu_(N, a, y);
 }
 
 void uint8_float_convert_kernel_cpu_(const int n, const float scale, const UINT8* a, float* y) {

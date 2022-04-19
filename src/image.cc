@@ -8,6 +8,7 @@
 #include <string>
 #include "../include/util.h"
 #include "../include/tool.h"
+#include "../include/wrap/Image.h"
 #define NODE_LESS_THAN (!(NODE_VERSION_AT_LEAST(0, 5, 4)))
 namespace annoa
 {
@@ -481,6 +482,8 @@ namespace annoa
         exports.Set(Napi::String::New(env, "imgScale"), Napi::Function::New(env, imgScale));
         exports.Set(Napi::String::New(env, "imgColorHSV"), Napi::Function::New(env, imgColorHSV));
         exports.Set(Napi::String::New(env, "test"), Napi::Function::New(env, test));
+
+        ImageWrap::Init(env, exports, "Image");
         return exports;
     }
 

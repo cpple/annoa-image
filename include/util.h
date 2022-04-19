@@ -29,6 +29,36 @@ typedef double             DOUBLE;
 struct Shape
 {
     Shape(int _n, int _c, int _h, int _w) : n(_n), c(_c), h(_h), w(_w) {};
+    Shape() {
+        w = 0;
+        h = 0;
+        c = 0;
+        n = 0;
+    };
+    int data_size() {
+        return n * c * h * w;
+    }
+    int image_size() {
+        return c * h * w;
+    }
+    int channel_size() {
+        return h * w;
+    }
+    int grid_size() {
+        return n * h * w;
+    }
+    int& height() {
+        return h;
+    }
+    int& width() {
+        return w;
+    }
+    int& channel() {
+        return c;
+    }
+    int& number() {
+        return n;
+    }
     int w;
     int h;
     int c;

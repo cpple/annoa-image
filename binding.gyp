@@ -7,7 +7,9 @@
       },
       "sources": [
         "./src/image.cc",
-        "./src/tools/tool.cpp"
+        "./src/tools/tool.cpp",
+        "./src/wrap/Image.cpp",
+        "./src/wrap/MateData.cpp"
        ],
       'cflags!': [ '-fno-exceptions' ],
       'cflags_cc!': [ '-fno-exceptions' ],
