@@ -447,23 +447,25 @@ float interpolate_xy(
     return v;
 }
 
-void uint8_to_uint8_scale_kernel_cpu_(const int n, const UINT8* a, const Shape& shape, const float sh, const float sw, UINT8* out) {
+void uint8_to_uint8_scale_kernel_cpu_(const int n, const UINT8* a, const Shape& shape, const int sh, const int sw, UINT8* out) {
     CPU_KERNEL_LOOP(index, n) {
 
-        int spDim = shape.h * shape.w;
-        int bDim = spDim * shape.c;
+        int spDim = sh * sw;
+        //int bDim = spDim;// *shape.c;
 
-        int batch = index / bDim;
-        int tmpBIdx = (index % bDim);
-        int channels = tmpBIdx / spDim;
-        int tmpCIdx = tmpBIdx % spDim;
+        int batch = index / spDim;
+        int tmpBIdx = (index % spDim);
+        //int channels = tmpBIdx / spDim;
+        //int tmpCIdx = tmpBIdx % spDim;
 
-        float ph = (float(shape.h) - sh) / float(2.0);
-        float pw = (float(shape.w) - sw) / float(2.0);
+        //float ph = (float(shape.h) - sh) / float(2.0);
+        //float pw = (float(shape.w) - sw) / float(2.0);
 
-        float y = float(tmpCIdx / shape.w) - ph;
-        float x = float(tmpCIdx % shape.w) - pw;
+        int dst_x = (tmpBIdx / sw);
+        int dst_y = (tmpBIdx % sw);
 
+        float x = static_cast<float>(dst_x);
+        float y = static_cast<float>(dst_y);
         // scale
         if (shape.w != sw) {
             x *= float(shape.w - 1) / float(sw - 1);
@@ -471,29 +473,36 @@ void uint8_to_uint8_scale_kernel_cpu_(const int n, const UINT8* a, const Shape& 
         if (shape.h != sh) {
             y *= float(shape.h - 1) / float(sh - 1);
         }
-        //printf("%f %f %f %f %f %f \n", y, x, ph, pw, sh, sw);
-        out[index] = static_cast<UINT8>(interpolate_xy(a, shape, batch, channels, y, x, false));
+        //printf("%f %f %d %d \n", y, x, dst_y, dst_x);
+        
+        for (int c = 0; c < shape.c; c++) {
+            // N*cs*hs*ws + C*hs*ws + H*ws + W
+            const int dst_idx = (batch * shape.c * sh * sw) +
+                (c * sh * sw) + (dst_y * sw) + int(dst_x);
+            out[dst_idx] = static_cast<UINT8>(interpolate_xy(a, shape, batch, c, y, x, false));
+        }
     }
 }
 
-void uint8_to_uint8_scale_o_kernel_cpu_(const int n, const UINT8* a, const Shape& shape, const float sh, const float sw, UINT8* out) {
+void uint8_to_uint8_scale_o_kernel_cpu_(const int n, const UINT8* a, const Shape& shape, const int sh, const int sw, UINT8* out) {
     CPU_KERNEL_LOOP(index, n) {
 
-        int bDim = shape.h * shape.w * shape.c;
+        int spDim = sh * sw;
+        //int bDim = spDim;// *shape.c;
 
-        int batch = index / bDim;
-        int tmpBIdx = (index % bDim);
-        int channels = index % shape.c;
-        int oy = tmpBIdx / (shape.w * shape.c);
-        int tmpWidx = tmpBIdx % (shape.w * shape.c);
-        int ox = tmpWidx / shape.c;
+        int batch = index / spDim;
+        int tmpBIdx = (index % spDim);
+        //int channels = tmpBIdx / spDim;
+        //int tmpCIdx = tmpBIdx % spDim;
 
-        float ph = (float(shape.h) - sh) / float(2.0);
-        float pw = (float(shape.w) - sw) / float(2.0);
+        //float ph = (float(shape.h) - sh) / float(2.0);
+        //float pw = (float(shape.w) - sw) / float(2.0);
 
-        float y = float(oy) - ph;
-        float x = float(ox) - pw;
+        int dst_x = (tmpBIdx / sw);
+        int dst_y = (tmpBIdx % sw);
 
+        float x = static_cast<float>(dst_x);
+        float y = static_cast<float>(dst_y);
         // scale
         if (shape.w != sw) {
             x *= float(shape.w - 1) / float(sw - 1);
@@ -502,11 +511,15 @@ void uint8_to_uint8_scale_o_kernel_cpu_(const int n, const UINT8* a, const Shape
             y *= float(shape.h - 1) / float(sh - 1);
         }
 
-        out[index] = static_cast<UINT8>(interpolate_xy(a, shape, batch, channels, y, x, true));
+        for (int c = 0; c < shape.c; c++) {
+            const int dst_idx = (batch * sh * sw * shape.c) +
+                (dst_y * sh * shape.c) + (dst_x * shape.c) + int(c);
+            out[dst_idx] = static_cast<UINT8>(interpolate_xy(a, shape, batch, c, y, x, true));
+        }
     }
 }
 
-void uint8_to_uint8_scale_cpu(const int N, const UINT8* a, const Shape& shape, const float sh, const float sw, UINT8* y, const bool& cf) {
+void uint8_to_uint8_scale_cpu(const int N, const UINT8* a, const Shape& shape, const int sh, const int sw, UINT8* y, const bool& cf) {
 
     if (cf)
     {

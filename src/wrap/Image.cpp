@@ -406,23 +406,24 @@ namespace annoa
 
         int oh = _shape.height();
         int ow = _shape.width();
-        float sh = static_cast<float>(oh * scaleh);
-        float sw = static_cast<float>(ow * scalew);
+        //float sh = static_cast<float>(oh * scaleh);
+        //float sw = static_cast<float>(ow * scalew);
 
-        if (sh == oh && ow == sw)
+        if (scaleh == oh && ow == scalew)
         {
             return info.This();
         }
-        UINT32 length = _shape.data_size();
         UINT32 channels = _shape.channel();
+        UINT32 length = _shape.number() * scaleh * scalew;
         UINT8* img_data = reinterpret_cast<UINT8*>(_data);
-        Napi::Uint8Array outData = Napi::Uint8Array::New(env, _shape.number() * channels * scaleh * scalew);
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, length * channels);
         UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
 
-        uint8_to_uint8_scale_cpu(length, img_data, _shape, sh, sw, result, !_flag);
-
+        //throw Napi::TypeError::New(env, "Wrong arguments" + std::to_string(!_flag));
+        uint8_to_uint8_scale_cpu(length, img_data, _shape, scaleh, scalew, result, _flag);
         _shape.h = scaleh;
         _shape.w = scalew;
+
         _data = result;
         info.This().ToObject().Set("data", outData);
         return info.This();

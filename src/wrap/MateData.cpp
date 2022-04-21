@@ -178,7 +178,7 @@ namespace annoa
         UINT32 lengthS = std_.ElementLength();
         float* stdv = reinterpret_cast<float*>(std_.ArrayBuffer().Data());
         //printf("%d", lengthM);
-        if (lengthM != lengthS || lengthM < _shape.channel()) {
+        if (lengthM != lengthS || lengthM < UINT32(_shape.channel())) {
 
             throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels < lengthS");
         }
