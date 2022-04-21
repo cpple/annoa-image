@@ -1,6 +1,9 @@
-#include "../../include/tool.h"
 
 #include <time.h>
+#include <cmath>
+#include <random>
+#include "../../include/tool.h"
+#include "../../include/util.h"
 
 void nchw_to_nhwc_kernel_cpu_(const int n, const int c, const int h, const int w, const UINT8* a, UINT8* y) {
     //int b_;
@@ -97,15 +100,17 @@ void remove_alpha_cpu(const int N, const UINT8* a, UINT8* y) {
 	remove_alpha_kernel_cpu_(N, a, y);
 }
 
-void remove_alpha_chw_kernel_cpu_(const int n, const UINT8* a, UINT8* y) {
+void remove_alpha_chw_kernel_cpu_(const int n, const int dima, const int dimy, const UINT8* a, UINT8* y) {
     CPU_KERNEL_LOOP(index, n) {
-        y[index] = a[index];
+
+        memcpy(y + (index * dimy), a + (index * dima), dimy * sizeof(UINT8));
+        //y[index] = a[index];
     }
 }
 
-void remove_alpha_chw_cpu(const int N, const UINT8* a, UINT8* y) {
+void remove_alpha_chw_cpu(const int N, const int dima, const int dimy, const UINT8* a, UINT8* y) {
     // NOLINT_NEXT_LINE(whitespace/operators)
-    remove_alpha_chw_kernel_cpu_(N, a, y);
+    remove_alpha_chw_kernel_cpu_(N, dima, dimy, a, y);
 }
 
 void uint8_float_convert_kernel_cpu_(const int n, const float scale, const UINT8* a, float* y) {
@@ -288,7 +293,7 @@ void uint8_to_float_convert_norm_cpu(const int N, const float scale, int batch, 
 	uint8_to_float_convert_norm_kernel_cpu_(N, scale, batch, channels, m, s, a, y);
 }
 
-void uint8_to_float_convert_norm_o_kernel_cpu_(const int n, const float scale, const UINT32 b, const UINT32 c, const float* m, const float* s, const UINT8* a, float* y) {
+void uint8_to_float_convert_norm_o_kernel_cpu_(const int n, const float scale, const int b, const int c, const float* m, const float* s, const UINT8* a, float* y) {
     CPU_KERNEL_LOOP(index, n) {
 
         int channels = index % c;
@@ -302,6 +307,43 @@ void uint8_to_float_convert_norm_o_kernel_cpu_(const int n, const float scale, c
 void uint8_to_float_convert_norm_o_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const UINT8* a, float* y) {
 
     uint8_to_float_convert_norm_o_kernel_cpu_(N, scale, batch, channels, m, s, a, y);
+}
+
+void float_to_float_convert_norm_kernel_cpu_(const int n, const float scale, const int b, const int c, const float* m, const float* s, const float* a, float* y) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        int spDim = n / (b * c);
+        int bDim = spDim * c;
+
+        int batch = index / bDim;
+        int tmpBIdx = (index % bDim);
+        int channels = tmpBIdx / spDim;
+        float v = a[index];
+        v *= scale;
+        v = (v - m[channels]) / s[channels];
+        y[index] = v;
+    }
+}
+
+void float_to_float_convert_norm_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const float* a, float* y) {
+
+    float_to_float_convert_norm_kernel_cpu_(N, scale, batch, channels, m, s, a, y);
+}
+
+void float_to_float_convert_norm_o_kernel_cpu_(const int n, const float scale, const int b, const int c, const float* m, const float* s, const float* a, float* y) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        int channels = index % c;
+        float v = a[index];
+        v *= scale;
+        v = (v - m[channels]) / s[channels];
+        y[index] = v;
+    }
+}
+
+void float_to_float_convert_norm_o_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const float* a, float* y) {
+
+    float_to_float_convert_norm_o_kernel_cpu_(N, scale, batch, channels, m, s, a, y);
 }
 
 float get_value(
@@ -663,4 +705,176 @@ void uint8_to_uint8_color_cpu(const int N, const UINT8* a, const Shape& shape, c
     {
         uint8_to_uint8_color_kernel_cpu_(N, a, shape, hue, sat, val, y);
     }
+}
+
+void horizontal_flip_kernel_cpu_(const int n, const int c, const int h, const int w, UINT8* y) {
+    CPU_KERNEL_LOOP(index, n) {
+        int pic_idx = index % (h * w);
+        int mini_size = c * h * w;
+        int b_ = index / (h * w);
+        int w_ = pic_idx % w;
+        int w_o = w - w_ - 1;
+        int h_ = pic_idx / w;
+        if (w_ <= w / 2) {
+
+            for (int c_ = 0; c_ < c; c_++) {
+                //UINT8 pix = y[index];
+                //y[index] = a[b_ * mini_size + c_ * h * w + h_ * w + w_];
+                std::swap(y[b_ * mini_size + c_ * h * w + h_ * w + w_], y[b_ * mini_size + c_ * h * w + h_ * w + w_o]);
+            }
+        }
+    }
+}
+
+void horizontal_flip_cpu(const int N, const int c, const int h, const int w, UINT8* y) {
+    // NOLINT_NEXT_LINE(whitespace/operators)
+    horizontal_flip_kernel_cpu_(N, c, h, w, y);
+}
+
+void horizontal_flip_nhwc_kernel_cpu_(const int n, const int c, const int h, const int w, UINT8* y) {
+    CPU_KERNEL_LOOP(index, n) {
+        int pic_idx = index % (h * w);
+        int mini_size = c * h * w;
+        int b_ = index / (h * w);
+        int w_ = pic_idx % w;
+        int w_o = w - w_ - 1;
+        int h_ = pic_idx / w;
+        if (w_ <= w / 2) {
+
+            for (int c_ = 0; c_ < c; c_++) {
+                //UINT8 pix = y[index];
+                //y[index] = a[b_ * mini_size + c_ * h * w + h_ * w + w_];
+                std::swap(y[b_ * mini_size + h_ * w * c + w_ * c + c_], y[b_ * mini_size + h_ * w * c + w_o * c + c_]);
+            }
+        }
+    }
+}
+
+void horizontal_flip_nhwc_cpu(const int N, const int c, const int h, const int w, UINT8* y) {
+    // NOLINT_NEXT_LINE(whitespace/operators)
+    horizontal_flip_nhwc_kernel_cpu_(N, c, h, w, y);
+}
+
+void random_crop_kernel_cpu_(const int n, const int c, const int oh, const int ow,
+    const int h, const int w, const int p, const UINT8* a, UINT8* y, int* m) {
+    int batch = -1;
+    int sh = 0;
+    int sw = 0;
+    std::random_device rd;
+    for (int index = 0; 
+        index < (n); 
+        index++) {
+
+        int spDim = w * h;
+        int bDim = w * h * c;
+
+        int new_batch = index / bDim;
+        if (new_batch != batch) {
+            batch = new_batch;
+            if (p > 0)
+            {
+                sh = rd() % ((oh + 2 * p) - h);
+                sw = rd() % ((ow + 2 * p) - w);
+            }
+            else {
+                sw = 0;
+                sh = 0;
+            }
+            m[batch * 2] = sh - p;
+            m[batch * 2 + 1] = sw - p;
+        }
+        int tmpBIdx = (index % bDim);
+        int channels = tmpBIdx / spDim;
+        int tmpCIdx = (tmpBIdx % spDim);
+        int outH = tmpCIdx / w;
+        int outW = tmpCIdx % w;
+
+        int inputH = outH;
+        int inputW = outW;
+        float v = 0;
+
+        int moveH = sh - p;
+        int moveW = sw - p;
+
+        inputH = moveH + outH;
+        inputW = moveW + outW;
+        int spIDim = ow * oh;
+        int bIDim = ow * oh * c;
+
+        if (inputH >= 0 && inputH < (int)oh && inputW >= 0 && inputW < (int)ow) {
+
+            v = a[batch * bIDim + channels * spIDim + inputH * (int)ow + inputW];
+        }
+        y[index] = v;
+    }
+}
+
+void random_crop_cpu(const int N, const int channels, const int oh, const int ow,
+    const int h, const int w, const int p, const UINT8* a, UINT8* y, int* m) {
+    // NOLINT_NEXT_LINE(whitespace/operators)
+
+    random_crop_kernel_cpu_(N, channels, oh, ow, h, w, p, a, y, m);
+}
+
+void random_crop_nhwc_kernel_cpu_(const int n, const int c, const int oh, const int ow,
+    const int h, const int w, const int p, const UINT8* a, UINT8* y, int* m) {
+    int batch = -1;
+    int sh = 0;
+    int sw = 0;
+    std::random_device rd;
+    CPU_KERNEL_LOOP(index, n) {
+
+        //int spDim = w * h;
+        int bDim = w * h * c;
+
+        int new_batch = index / bDim;
+        if (new_batch != batch) {
+            batch = new_batch;
+            if (p > 0)
+            {
+                sh = rd() % ((oh + 2 * p) - h);
+                sw = rd() % ((ow + 2 * p) - w);
+            }
+            else {
+                sw = 0;
+                sh = 0;
+            }
+            m[batch * 2] = sh - p;
+            m[batch * 2 + 1] = sw - p;
+        }
+        int tmpBIdx = (index % bDim);
+
+        int channels = tmpBIdx % c;
+
+        int tmpCIdx = (tmpBIdx / c);
+
+        int outH = tmpCIdx / w;
+
+        int outW = tmpCIdx % w;
+
+        int inputH = outH;
+        int inputW = outW;
+        float v = 0;
+
+        int moveH = sh - p;
+        int moveW = sw - p;
+
+        inputH = moveH + outH;
+        inputW = moveW + outW;
+        //int spIDim = ow * oh;
+        int bIDim = ow * oh * c;
+
+        if (inputH >= 0 && inputH < (int)oh && inputW >= 0 && inputW < (int)ow) {
+
+            v = a[batch * bIDim + c * inputH * (int)ow + inputW * c + channels];
+        }
+        y[index] = v;
+    }
+}
+
+void random_crop_nhwc_cpu(const int N, const int channels, const int oh, const int ow,
+    const int h, const int w, const int p, const UINT8* a, UINT8* y, int* m) {
+    // NOLINT_NEXT_LINE(whitespace/operators)
+
+    random_crop_nhwc_kernel_cpu_(N, channels, oh, ow, h, w, p, a, y, m);
 }

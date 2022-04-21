@@ -1,4 +1,5 @@
 #include "../../include/wrap/Image.h"
+#include "../../include/wrap/MateData.h"
 
 namespace annoa
 {
@@ -13,6 +14,9 @@ namespace annoa
                 InstanceMethod("SetNCHWData", &ImageWrap::SetNCHWData),
                 InstanceMethod("SetNHWCData", &ImageWrap::SetNHWCData),
                 InstanceMethod("RemoveAlpha", &ImageWrap::RemoveAlpha),
+                InstanceMethod("HorizontalFlip", &ImageWrap::HorizontalFlip),
+                InstanceMethod("RandomCrop", &ImageWrap::RandomCrop),
+                InstanceMethod("NormalizeToMateData", &ImageWrap::Normalize),
             }
         );
         constructor = Napi::Persistent(func);
@@ -57,6 +61,13 @@ namespace annoa
     ImageWrap::~ImageWrap() {
         _data = nullptr;
     }
+
+    Napi::Value ImageWrap::Create(const Napi::Number& number, const Napi::Number& channel, const Napi::Number& height, const Napi::Number& width)
+    {
+        Napi::Object obj = constructor.New({ number , channel, height, width });
+
+        return obj;
+    }
     Napi::Value ImageWrap::GetNCHWData(const Napi::CallbackInfo& info) {
         Napi::Env env = info.Env();
         Napi::Value data = info.This().ToObject().Get("data");
@@ -69,9 +80,9 @@ namespace annoa
             _flag = 0;
             Napi::Uint8Array data_array = Napi::Uint8Array::New(env, _shape.data_size());
             nhwc_to_nchw_cpu(_shape.grid_size(), _shape.channel(), _shape.height(), _shape.width(), (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()));
-            _data = data_array.ArrayBuffer().Data();
-            info.This().ToObject().Set("data", data_array);
-            data = data_array;
+            memcpy(_data, data_array.ArrayBuffer().Data(), data_array.ByteLength());// _data = data_array.ArrayBuffer().Data();
+            //info.This().ToObject().Set("data", data_array);
+            //data = data_array;
         }
 
         return data;
@@ -88,9 +99,9 @@ namespace annoa
             _flag = 1;
             Napi::Uint8Array data_array = Napi::Uint8Array::New(env, _shape.data_size());
             nchw_to_nhwc_cpu(_shape.grid_size(), _shape.channel(), _shape.height(), _shape.width(), (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()));
-            _data = data_array.ArrayBuffer().Data();
-            info.This().ToObject().Set("data", data_array);
-            data = data_array;
+            memcpy(_data, data_array.ArrayBuffer().Data(), data_array.ByteLength());// _data = data_array.ArrayBuffer().Data();
+            //info.This().ToObject().Set("data", data_array);
+            //data = data_array;
         }
 
         return data;
@@ -171,10 +182,173 @@ namespace annoa
             remove_alpha_cpu(_shape.grid_size(), (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()));
         }
         else {
-            //remove_alpha_chw_cpu(_shape.data_size(), (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()));
-            memcpy(data_array.ArrayBuffer().Data(), _data, data_array.ByteLength());
+            remove_alpha_chw_cpu(_shape.number(), _shape.channel_size() * 4, _shape.image_size(), (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()));
+            //memcpy(data_array.ArrayBuffer().Data(), _data, data_array.ByteLength());
         }
         _data = data_array.ArrayBuffer().Data();
         info.This().ToObject().Set("data", data_array);
+    }
+    void ImageWrap::HorizontalFlip(const Napi::CallbackInfo& info) {
+
+        Napi::Env env = info.Env();
+
+        Napi::Value data = info.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return;
+        }
+
+        if (!_flag) {
+            horizontal_flip_cpu(_shape.grid_size(), _shape.channel(), _shape.height(), _shape.width(), (UINT8*)(_data));
+        }
+        else {
+            horizontal_flip_nhwc_cpu(_shape.grid_size(), _shape.channel(), _shape.height(), _shape.width(), (UINT8*)(_data));
+        }
+    }
+    Napi::Value ImageWrap::RandomCrop(const Napi::CallbackInfo& info) {
+
+        Napi::Env env = info.Env();
+
+        Napi::Value data = info.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (info.Length() < 3)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+        if (!info[0].IsNumber() || !info[1].IsNumber() || !info[2].IsNumber()) {
+            throw Napi::TypeError::New(env, "Wrong type of arguments");
+        }
+        int h = info[0].ToNumber().Int32Value();
+        int w = info[1].ToNumber().Int32Value();
+        int p = info[2].ToNumber().Int32Value();
+        int ow = _shape.width();
+        int oh = _shape.height();
+        int channel = _shape.channel();
+        if (h > (oh + 2 * p)) {
+
+            throw Napi::TypeError::New(env, "Wrong h check h > oh + 2 * p of arguments");
+        }
+        if (w > (ow + 2 * p)) {
+
+            throw Napi::TypeError::New(env, "Wrong w check w > ow + 2 * p of arguments");
+        }
+        _shape.h = h;
+        _shape.w = w;
+        int size = _shape.data_size();
+        Napi::Uint8Array data_array = Napi::Uint8Array::New(env, _shape.data_size());
+        Napi::Int32Array move_array = Napi::Int32Array::New(env, _shape.number() * 2);
+        if (!_flag) {
+            random_crop_cpu(size, channel, oh, ow, h, w, p, (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()), (int*)(move_array.ArrayBuffer().Data()));
+        }
+        else {
+            random_crop_nhwc_cpu(size, channel, oh, ow, h, w, p, (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()), (int*)(move_array.ArrayBuffer().Data()));
+        }
+        _data = data_array.ArrayBuffer().Data();
+        info.This().ToObject().Set("data", data_array);
+        return move_array;
+    }
+    Napi::Value ImageWrap::Normalize(const Napi::CallbackInfo& info) {
+
+        Napi::Env env = info.Env();
+
+        Napi::Value data = info.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (info.Length() < 2)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if ((!info[0].IsArray() || !info[1].IsArray()) &&
+            (!IsTypeArray(info[0], napi_float32_array) ||
+            !IsTypeArray(info[1], napi_float32_array)))
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+
+        Napi::Float32Array mean_;
+
+        if (info[0].IsArray()) {
+            Napi::Array mean_array = info[0].As<Napi::Array>();
+            int length_m = mean_array.Length();
+            mean_ = Napi::Float32Array::New(env, length_m);
+            for (UINT32 i = 0; i < mean_array.Length(); i++) {
+                Napi::Value m = mean_array.Get(i);
+                if (!m.IsNumber()) {
+                    throw Napi::TypeError::New(env, "mean value error....");
+                }
+                mean_.Set(i, m.ToNumber());
+            }
+        }
+        else if (IsTypeArray(info[0], napi_float32_array)) {
+
+            mean_ = info[0].As<Napi::Float32Array>();
+        }
+        UINT32 lengthM = mean_.ElementLength();
+        float* mean = reinterpret_cast<float*>(mean_.ArrayBuffer().Data());
+        Napi::Float32Array std_;
+        if (info[1].IsArray()) {
+
+            Napi::Array std_array = info[0].As<Napi::Array>();
+            int length_s = std_array.Length();
+            std_ = Napi::Float32Array::New(env, length_s);
+            for (UINT32 i = 0; i < std_array.Length(); i++) {
+                Napi::Value s = std_array.Get(i);
+                if (!s.IsNumber()) {
+                    throw Napi::TypeError::New(env, "std value error....");
+                }
+                std_.Set(i, s.ToNumber());
+            }
+        }
+        else if (IsTypeArray(info[1], napi_float32_array)) {
+
+            std_ = info[1].As<Napi::Float32Array>();
+        }
+        UINT32 lengthS = std_.ElementLength();
+        float* stdv = reinterpret_cast<float*>(std_.ArrayBuffer().Data());
+        //printf("%d", lengthM);
+        if (lengthM != lengthS || lengthM < (UINT32)_shape.channel()) {
+
+            throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels < lengthS");
+        }
+        float scale = 1.0f;
+        if (info.Length() == 3 && info[2].IsNumber())
+        {
+            scale = info[2].ToNumber().FloatValue();
+        }
+
+        Napi::Float32Array outData = Napi::Float32Array::New(env, _shape.data_size());
+        float* result = (float*)outData.ArrayBuffer().Data();
+        if (_flag)
+        {
+            uint8_to_float_convert_norm_o_cpu(_shape.data_size(), scale, _shape.number(), lengthM, mean, stdv, (UINT8*)_data, result);
+        }
+        else
+        {
+            uint8_to_float_convert_norm_cpu(_shape.data_size(), scale, _shape.number(), lengthM, mean, stdv, (UINT8*)_data, result);
+        }
+        //Napi::Number number = Napi::Number::New(env, _shape.number());
+        Napi::Number channel = Napi::Number::New(env, _shape.channel());
+        Napi::Number height = Napi::Number::New(env, _shape.height());
+        Napi::Number width = Napi::Number::New(env, _shape.width());
+
+        Napi::Value mate = MateDataWrap::Create(channel, height, width);
+        Napi::Object mate_o = mate.ToObject();
+        MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
+        mate_->SetData(_shape, outData);
+        return mate;
     }
 }

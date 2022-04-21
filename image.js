@@ -32,21 +32,3 @@ let exp = {
     Image:bindings.Image
 };
 module.exports = exp;
-//
-// let image = new bindings.Image(4,3,3);
-// let array = Uint8Array.from([
-//     10,11,12,13, 20,21,22,23, 30,31,32,33,
-//     40,41,42,43, 50,51,52,53, 60,61,62,63,
-//     70,71,72,73, 80,81,82,83, 90,91,92,93,
-// ])
-// image.SetNHWCData(array);
-// let nchw = image.GetNCHWData();
-// console.error(nchw);
-// image.SetNCHWData(nchw);
-// image.RemoveAlpha();
-// let nhwco = image.GetNCHWData();
-// console.error(nhwco);
-//
-// let nhwc = image.GetNHWCData();
-//
-// console.error(nhwc);

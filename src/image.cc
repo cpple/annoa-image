@@ -9,6 +9,7 @@
 #include "../include/util.h"
 #include "../include/tool.h"
 #include "../include/wrap/Image.h"
+#include "../include/wrap/MateData.h"
 #define NODE_LESS_THAN (!(NODE_VERSION_AT_LEAST(0, 5, 4)))
 namespace annoa
 {
@@ -484,6 +485,7 @@ namespace annoa
         exports.Set(Napi::String::New(env, "test"), Napi::Function::New(env, test));
 
         ImageWrap::Init(env, exports, "Image");
+        MateDataWrap::Init(env, exports, "MateData");
         return exports;
     }
 

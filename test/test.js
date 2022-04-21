@@ -9,22 +9,44 @@ let test = async function (arrO) {
         //let result = image.convertNetData(arrO, 1/255);
         //let result = image.imgScale(arrO, 9, 9, 1.4, 1.4, 1, true);
         //let result = image.imgColorHSV(arrO, 1, 9, 9, 0, 1, 3, true);
-        let image = new image.Image(3,3,3);
-        let array = Uint8Array.from([
-            1,1,1, 2,2,2, 3,3,3,
-            4,4,4, 5,5,5, 6,6,6,
-            7,7,7, 8,8,8, 9,9,9,
-        ])
-        image.SetNHWCData(array);
 
-        let nchw = image.GetNCHWData();
-        console.error(nchw);
-        image.SetNCHWData(nchw);
-        let nhwc = image.GetNHWCData();
-        console.error(nhwc);
+
+        // let img = new image.Image(4,3,3);
+        // let array = Uint8Array.from([
+        //     10,11,12,13, 20,21,22,23, 30,31,32,33,
+        //     40,41,42,43, 50,51,52,53, 60,61,62,63,
+        //     70,71,72,73, 80,81,82,83, 90,91,92,93,
+        //
+        //     10,11,12,13, 20,21,22,23, 30,31,32,33,
+        //     40,41,42,43, 50,51,52,53, 60,61,62,63,
+        //     70,71,72,73, 80,81,82,83, 90,91,92,93,
+        // ])
+        // img.SetNHWCData(array);
+        // let nchw = img.GetNCHWData();
+        // console.error(.nchw);
+        // img.SetNCHWData(nchw);
+        // img.RemoveAlpha();
+        // let nhwco = img.GetNCHWData();
+        // console.error(nhwco);
+        //
+        // let nhwc = img.GetNHWCData();
+        // console.error(nhwc);
+        // img.HorizontalFlip();
+        //
+        // console.error(nhwc);
 
         // console.error(JSON.stringify(image.GetNCHWData()));
         // console.error(JSON.stringify(Array.from(result)));
+
+        let img = new image.Image(2,5,5);
+        let array = new Uint8Array(2*2*5*5);
+        array.fill(151);
+        img.SetNHWCData(array);
+        let move = img.RandomCrop(3,3, 2);
+        console.error(img.GetNCHWData(), move)
+        let mata = img.NormalizeToMateData(Float32Array.from([0.40789654, 0.44719302, 0.47026115]), Float32Array.from([0.28863828, 0.27408164, 0.27809835]), 1/256);
+
+        console.error(mata.GetData());
     } catch (err) {
 
         console.error(err);
