@@ -20,10 +20,12 @@ namespace annoa
         Napi::Value GetNHWCData(const Napi::CallbackInfo& info);
         Napi::Value SetNCHWData(const Napi::CallbackInfo& info);
         Napi::Value SetNHWCData(const Napi::CallbackInfo& info);
-        void RemoveAlpha(const Napi::CallbackInfo& info);
-        void HorizontalFlip(const Napi::CallbackInfo& info);
+        Napi::Value RemoveAlpha(const Napi::CallbackInfo& info);
+        Napi::Value HorizontalFlip(const Napi::CallbackInfo& info);
         Napi::Value RandomCrop(const Napi::CallbackInfo& info);
         Napi::Value Normalize(const Napi::CallbackInfo& info);
+        Napi::Value MateData(const Napi::CallbackInfo& info);
+        Napi::Value ScaleSize(const Napi::CallbackInfo& info);
     private:
         static Napi::FunctionReference constructor;
         Shape _shape;

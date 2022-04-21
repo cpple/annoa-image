@@ -18,7 +18,8 @@ namespace annoa
     private:
         Napi::Value GetData(const Napi::CallbackInfo& info);
         Napi::Value SetData(const Napi::CallbackInfo& info);
-        void Normalize(const Napi::CallbackInfo& info);
+        Napi::Value Normalize(const Napi::CallbackInfo& info);
+        Napi::Value Scale(const Napi::CallbackInfo& info);
 
     public:
         void SetData(const Shape& s, Napi::Float32Array& data);

@@ -11,6 +11,7 @@ namespace annoa
                 InstanceMethod("GetData", &MateDataWrap::GetData),
                 InstanceMethod("SetData", &MateDataWrap::SetData),
                 InstanceMethod("Normalize", &MateDataWrap::Normalize),
+                InstanceMethod("Scale", &MateDataWrap::Scale),
             }
         );
         constructor = Napi::Persistent(func);
@@ -113,7 +114,7 @@ namespace annoa
         _data = array_.ArrayBuffer().Data();
         return env.Null();
     }
-    void MateDataWrap::Normalize(const Napi::CallbackInfo& info) {
+    Napi::Value MateDataWrap::Normalize(const Napi::CallbackInfo& info) {
 
         Napi::Env env = info.Env();
 
@@ -122,7 +123,6 @@ namespace annoa
         if (data.IsNull()) {
 
             Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
-            return;
         }
 
         if (info.Length() < 2)
@@ -130,9 +130,9 @@ namespace annoa
             throw Napi::TypeError::New(env, "Wrong number of arguments");
         }
 
-        if (!info[0].IsArray() || !info[1].IsArray() ||
-            !IsTypeArray(info[0], napi_float32_array) ||
-            !IsTypeArray(info[1], napi_float32_array))
+        if ((!info[0].IsArray() || !info[1].IsArray()) &&
+            (!IsTypeArray(info[0], napi_float32_array) ||
+                !IsTypeArray(info[1], napi_float32_array)))
         {
             throw Napi::TypeError::New(env, "Wrong arguments");
         }
@@ -178,9 +178,9 @@ namespace annoa
         UINT32 lengthS = std_.ElementLength();
         float* stdv = reinterpret_cast<float*>(std_.ArrayBuffer().Data());
         //printf("%d", lengthM);
-        if (lengthM != lengthS || lengthM != _shape.channel()) {
+        if (lengthM != lengthS || lengthM < _shape.channel()) {
 
-            throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels != lengthS");
+            throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels < lengthS");
         }
         float scale = 1.0f;
         if (info.Length() == 3 && info[2].IsNumber())
@@ -196,5 +196,32 @@ namespace annoa
         {
             float_to_float_convert_norm_cpu(_shape.data_size(), scale, _shape.number(), lengthM, mean, stdv, (const FLOAT*)_data, (FLOAT*)_data);
         }
+        return info.This();
+    }
+    Napi::Value MateDataWrap::Scale(const Napi::CallbackInfo& info) {
+
+        Napi::Env env = info.Env();
+
+        Napi::Value data = info.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+        }
+
+        if (info.Length() < 1)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if (!info[0].IsNumber())
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+
+        float scale = info[0].ToNumber().FloatValue();
+
+        scale_norm_cpu(_shape.data_size(), scale, (FLOAT*)_data);
+        return info.This();
     }
 }

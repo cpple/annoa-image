@@ -346,6 +346,29 @@ void float_to_float_convert_norm_o_cpu(const int N, const float scale, int batch
     float_to_float_convert_norm_o_kernel_cpu_(N, scale, batch, channels, m, s, a, y);
 }
 
+void scale_norm_cpu_(const int n, const float scale, float* y) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        y[index] *= scale;
+    }
+}
+
+void scale_norm_cpu(const int N, const float scale, float* y) {
+    scale_norm_cpu_(N, scale, y);
+}
+
+void scale_norm_cpu_(const int n, const float scale, const UINT8* a, float* y) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        float v = static_cast<float>(a[index]);
+        y[index] = v * scale;
+    }
+}
+
+void scale_norm_cpu(const int N, const float scale, const UINT8* a, float* y) {
+    scale_norm_cpu_(N, scale, a, y);
+}
+
 float get_value(
     const UINT8* data, const Shape& shape,
     const unsigned int n, const unsigned int c,

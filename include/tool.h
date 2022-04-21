@@ -23,4 +23,6 @@ void random_crop_nhwc_cpu(const int N, const int channels, const int oh, const i
     const int h, const int w, const int p, const UINT8* a, UINT8* y, INT32* m);
 void float_to_float_convert_norm_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const float* a, float* y);
 void float_to_float_convert_norm_o_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const float* a, float* y);
+void scale_norm_cpu(const int N, const float scale, float* y);
+void scale_norm_cpu(const int N, const float scale, const UINT8* a, float* y);
 
