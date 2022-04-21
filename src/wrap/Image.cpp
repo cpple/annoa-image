@@ -257,6 +257,8 @@ namespace annoa
         }
         _data = data_array.ArrayBuffer().Data();
         info.This().ToObject().Set("data", data_array);
+        info.This().ToObject().Set("h", _shape.h);
+        info.This().ToObject().Set("w", _shape.w);
         return move_array;
     }
     Napi::Value ImageWrap::Normalize(const Napi::CallbackInfo& info) {
@@ -426,6 +428,8 @@ namespace annoa
 
         _data = result;
         info.This().ToObject().Set("data", outData);
+        info.This().ToObject().Set("h", _shape.h);
+        info.This().ToObject().Set("w", _shape.w);
         return info.This();
     }
 }
