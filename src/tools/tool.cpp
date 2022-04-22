@@ -125,7 +125,7 @@ void uint8_to_float_convert_cpu(const int N, const float scale, const UINT8* a, 
 	uint8_float_convert_kernel_cpu_(N, scale, a, y);
 }
 
-void capture_bbox_img_kernel_cpu_(const int n, const UINT8* a, UINT32 c, UINT32 aw, UINT32 ah, UINT32 x, UINT32 y, UINT32 w, UINT32 h, UINT8* r) {
+void capture_bbox_img_kernel_cpu_(const int n, const UINT8* a, int c, int aw, int ah, int x, int y, int w, int h, UINT8* r) {
 	CPU_KERNEL_LOOP(index, n) {
 
 		int spr = w * c;
@@ -139,7 +139,7 @@ void capture_bbox_img_kernel_cpu_(const int n, const UINT8* a, UINT32 c, UINT32 
 		int cy = yr + y;
 
 		int sp = aw * c;
-		for (UINT32 i = 0; i < c; i++)
+		for (int i = 0; i < c; i++)
 		{
 			int idxr = yr * spr + xr * c + i;
 			int idxa = cy * sp + cx * c + i;
@@ -148,10 +148,40 @@ void capture_bbox_img_kernel_cpu_(const int n, const UINT8* a, UINT32 c, UINT32 
 	}
 }
 
-void capture_bbox_img_cpu(const int N, const UINT8* a, UINT32 c, UINT32 aw, UINT32 ah, UINT32 x, UINT32 y, UINT32 w, UINT32 h, UINT8* r) {
+void capture_bbox_img_o_kernel_cpu_(const int n, const UINT8* a, int c, int aw, int ah, int x, int y, int w, int h, UINT8* r) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        int spr = h * w;
+        int xr = index % w;
+        int yr = index / w;
+
+        //int x1 = x - w / 2;
+        //int y1 = y - h / 2;
+
+        int cx = xr + x;
+        int cy = yr + y;
+
+        int sp = aw * ah;
+        for (int i = 0; i < c; i++)
+        {
+            int idxr = i * spr + yr * w + xr;
+            int idxa = i * sp + cy * aw + cx;
+            r[idxr] = a[idxa];
+        }
+    }
+}
+
+void capture_bbox_img_cpu(const int N, const UINT8* a, int c, int aw, int ah, int x, int y, int w, int h, UINT8* r, const bool& flag) {
 	// NOLINT_NEXT_LINE(whitespace/operators)
 
-	capture_bbox_img_kernel_cpu_(N, a, c, aw, ah, x, y, w, h, r);
+    if (flag) {
+
+        capture_bbox_img_kernel_cpu_(N, a, c, aw, ah, x, y, w, h, r);
+    }
+    else {
+
+        capture_bbox_img_o_kernel_cpu_(N, a, c, aw, ah, x, y, w, h, r);
+    }
 }
 
 void uint8_to_float_random_crop_hori_norm_kernel_cpu_(const int n, const float scale, const UINT32 b, const UINT32 c,

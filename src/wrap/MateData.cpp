@@ -69,7 +69,7 @@ namespace annoa
 
         return data;
     }
-    void MateDataWrap::SetData(const Shape& s, Napi::Float32Array& array_) {
+    void MateDataWrap::SetData(int flag, Napi::Float32Array& array_) {
 
         int image_size = _shape.image_size();
         int array_size = array_.ElementLength();
@@ -80,7 +80,7 @@ namespace annoa
             return;
         }
         _shape.n = batch;
-        _flag = 0;
+        _flag = flag;
         Napi::Object self = this->Value();
         self.Set("n", batch);
         self.Set("flag", _flag);

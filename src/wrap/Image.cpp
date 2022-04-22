@@ -19,6 +19,8 @@ namespace annoa
                 InstanceMethod("NormalizeToMateData", &ImageWrap::Normalize),
                 InstanceMethod("MateData", &ImageWrap::MateData),
                 InstanceMethod("ScaleSize", &ImageWrap::ScaleSize),
+                InstanceMethod("ColorHSV", &ImageWrap::ColorHSV),
+                InstanceMethod("CaptureImgByBoundingBox", &ImageWrap::CaptureImgByBoundingBox),
             }
         );
         constructor = Napi::Persistent(func);
@@ -64,9 +66,9 @@ namespace annoa
         _data = nullptr;
     }
 
-    Napi::Value ImageWrap::Create(const Napi::Number& number, const Napi::Number& channel, const Napi::Number& height, const Napi::Number& width)
+    Napi::Value ImageWrap::Create(const Napi::Number& channel, const Napi::Number& height, const Napi::Number& width)
     {
-        Napi::Object obj = constructor.New({ number , channel, height, width });
+        Napi::Object obj = constructor.New({ channel, height, width });
 
         return obj;
     }
@@ -354,7 +356,7 @@ namespace annoa
         Napi::Value mate = MateDataWrap::Create(channel, height, width);
         Napi::Object mate_o = mate.ToObject();
         MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
-        mate_->SetData(_shape, outData);
+        mate_->SetData(_flag, outData);
         return mate;
     }
     Napi::Value ImageWrap::MateData(const Napi::CallbackInfo& info) {
@@ -385,12 +387,20 @@ namespace annoa
         Napi::Value mate = MateDataWrap::Create(channel, height, width);
         Napi::Object mate_o = mate.ToObject();
         MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
-        mate_->SetData(_shape, outData);
+        mate_->SetData(_flag, outData);
         return mate;
     }
     Napi::Value ImageWrap::ScaleSize(const Napi::CallbackInfo& info) {
 
         Napi::Env env = info.Env();
+
+        Napi::Value data = info.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
 
         if (info.Length() < 2)
         {
@@ -431,5 +441,191 @@ namespace annoa
         info.This().ToObject().Set("h", _shape.h);
         info.This().ToObject().Set("w", _shape.w);
         return info.This();
+    }
+
+    Napi::Value ImageWrap::ColorHSV(const Napi::CallbackInfo& args)
+    {
+        Napi::Env env = args.Env();
+
+        Napi::Value data = args.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (args.Length() < 3)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if (!args[0].IsNumber() || !args[1].IsNumber() ||
+            !args[2].IsNumber())
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+
+        float hue = args[0].ToNumber().FloatValue();
+        float sat = args[1].ToNumber().FloatValue();
+        float val = args[2].ToNumber().FloatValue();
+
+        UINT32 length = _shape.data_size();
+        UINT32 pixels = _shape.grid_size();
+        UINT32 channels = _shape.channel();
+        if (channels < 3 || channels > 4)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+        UINT8* img_data = reinterpret_cast<UINT8*>(_data);
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, length);
+        UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
+
+        uint8_to_uint8_color_cpu(pixels, img_data, _shape, hue, sat, val, result, _flag);
+        _data = result;
+        args.This().ToObject().Set("data", outData);
+
+        return args.This();
+    }
+    Napi::Value ImageWrap::CaptureImgByBoundingBox(const Napi::CallbackInfo& args)
+    {
+        Napi::Env env = args.Env();
+
+        if (args.Length() < 1)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if (!args[0].IsArray())
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+        UINT8* img_data = static_cast<UINT8*>(_data);
+        int length = _shape.data_size();
+        int batch = _shape.number();
+        int channels = _shape.channel();
+        int height = _shape.height();
+        int width = _shape.width();
+
+        Napi::Array bboxList = args[0].As<Napi::Array>();
+        int batch_idx = 0;
+        if (args.Length() == 2 && args[1].IsNumber()) {
+            batch_idx = args[1].ToNumber().Int32Value();
+            if (batch_idx < 0 || batch_idx >= batch) {
+
+                throw Napi::TypeError::New(env, "Wrong batch idx arguments");
+            }
+        }
+        int offset = batch_idx * _shape.image_size();
+        Napi::Array imgList = Napi::Array::New(env);
+        UINT32 size = bboxList.Length();
+        for (UINT32 c = 0; c < size; c++) {
+
+            Napi::Value bboxV = bboxList.Get(c);
+            if (!IsTypeArray(bboxV, napi_uint32_array) && !IsTypeArray(bboxV, napi_float32_array))
+            {
+                throw Napi::TypeError::New(env, "bbox data type error arguments");
+            }
+            bool isFloat = false;
+            if (IsTypeArray(bboxV, napi_float32_array))
+            {
+                isFloat = true;
+            }
+            Napi::TypedArray bbox = bboxList.Get(c).As<Napi::TypedArray>();
+            if (bbox.ElementLength() != 4)
+            {
+                throw Napi::TypeError::New(env, "bbox length error arguments");
+            }
+            void* data = bbox.ArrayBuffer().Data();
+
+            float* dataF = nullptr;
+            UINT32* dataU = nullptr;
+            if (isFloat)
+                dataF = static_cast<float*>(data);
+            else
+                dataU = static_cast<UINT32*>(data);
+
+            int Bx = static_cast<int>(isFloat ? dataF[0] : dataU[0]);
+            int By = static_cast<int>(isFloat ? dataF[1] : dataU[1]);
+            int Bw = static_cast<int>(isFloat ? dataF[2] : dataU[2]);
+            int Bh = static_cast<int>(isFloat ? dataF[3] : dataU[3]);
+            int hw = Bw / 2;
+            int hh = Bh / 2;
+
+            int x1 = Bx - hw;
+            int y1 = By - hh;
+            int x2 = x1 + Bw;// -hw;
+            int y2 = y1 + Bh;// -hh;
+
+            if (x1 < 0) {
+                x1 = 0;
+            }
+            if (y1 < 0) {
+                y1 = 0;
+            }
+            if (x1 > width) {
+                continue;
+            }
+            if (y1 > height) {
+                continue;
+            }
+
+            if (x2 > width) {
+                x2 = width;
+            }
+            if (y2 > height) {
+                y2 = height;
+            }
+
+            if (x2 <= x1) {
+                continue;
+            }
+            if (y2 <= y1) {
+                continue;
+            }
+
+            Bw = x2 - x1;
+            Bh = y2 - y1;
+
+            if (Bw < 0 || Bh < 0)
+            {
+                continue;
+            }
+            //printf("%d %d %d %d  %d %d  %d", x1, y1, x2, y2, Bw, Bh, channels);
+
+            int spDim = Bw * Bh * channels;
+            int picDim = Bw * Bh;
+
+            Napi::Uint8Array outData = Napi::Uint8Array::New(env, spDim);
+            UINT8* result = reinterpret_cast<UINT8*>(outData.ArrayBuffer().Data()) + offset;
+
+            capture_bbox_img_cpu(picDim, img_data, channels, width, height, x1, y1, Bw, Bh, result, _flag);
+
+            Napi::Value image = ImageWrap::Create(Napi::Number::New(env, channels), Napi::Number::New(env, Bh), Napi::Number::New(env, Bw));
+            Napi::Object image_o = image.ToObject();
+            ImageWrap* image_ = Napi::ObjectWrap<ImageWrap>::Unwrap(image_o);
+            image_->SetData(_flag, outData);
+
+            imgList.Set(imgList.Length(), image);
+        }
+        return imgList;
+    }
+    void ImageWrap::SetData(int flag, Napi::Uint8Array& array_) {
+
+        int image_size = _shape.image_size();
+        int array_size = array_.ElementLength();
+        int lost = array_size % image_size;
+        int batch = array_size / image_size;
+        if (lost || batch < 1) {
+            Napi::TypeError::New(this->Env(), "image size error expected").ThrowAsJavaScriptException();
+            return;
+        }
+        _shape.n = batch;
+        _flag = flag;
+        Napi::Object self = this->Value();
+        self.Set("n", batch);
+        self.Set("flag", _flag);
+        self.Set("data", array_);
+        _data = array_.ArrayBuffer().Data();
     }
 }

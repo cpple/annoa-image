@@ -14,7 +14,7 @@ namespace annoa
         ImageWrap(const Napi::CallbackInfo& info);
         ~ImageWrap();
         void ImageWrap::Destructor(napi_env env, void* nativeObject, void* /*finalize_hint*/);
-        static Napi::Value Create(const Napi::Number& number, const Napi::Number& channel, const Napi::Number& height, const Napi::Number& width);
+        static Napi::Value Create(const Napi::Number& channel, const Napi::Number& height, const Napi::Number& width);
     private:
         Napi::Value GetNCHWData(const Napi::CallbackInfo& info);
         Napi::Value GetNHWCData(const Napi::CallbackInfo& info);
@@ -26,6 +26,10 @@ namespace annoa
         Napi::Value Normalize(const Napi::CallbackInfo& info);
         Napi::Value MateData(const Napi::CallbackInfo& info);
         Napi::Value ScaleSize(const Napi::CallbackInfo& info);
+        Napi::Value ColorHSV(const Napi::CallbackInfo& args);
+        Napi::Value CaptureImgByBoundingBox(const Napi::CallbackInfo& args);
+    public:
+        void SetData(int flag, Napi::Uint8Array& array_);
     private:
         static Napi::FunctionReference constructor;
         Shape _shape;

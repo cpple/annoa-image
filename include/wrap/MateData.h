@@ -22,7 +22,7 @@ namespace annoa
         Napi::Value Scale(const Napi::CallbackInfo& info);
 
     public:
-        void SetData(const Shape& s, Napi::Float32Array& data);
+        void SetData(int flag, Napi::Float32Array& data);
 
         inline void set_data(void* data) {
             _data = data;

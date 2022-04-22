@@ -167,7 +167,7 @@ namespace annoa
             Napi::Uint8Array outData = Napi::Uint8Array::New(env, spDim);
 			UINT8 * result = reinterpret_cast<UINT8*>(outData.ArrayBuffer().Data());
 
-			capture_bbox_img_cpu(picDim, img_data, channels, width, height, x1, y1, Bw, Bh, result);
+			capture_bbox_img_cpu(picDim, img_data, channels, width, height, x1, y1, Bw, Bh, result, true);
             Napi::Object obj = Napi::Object::New(env);
             obj.Set("width", static_cast<double>(Bw));
             obj.Set("height", static_cast<double>(Bh));
