@@ -500,7 +500,6 @@ namespace annoa
         {
             throw Napi::TypeError::New(env, "Wrong arguments");
         }
-        UINT8* img_data = static_cast<UINT8*>(_data);
         int length = _shape.data_size();
         int batch = _shape.number();
         int channels = _shape.channel();
@@ -517,6 +516,7 @@ namespace annoa
             }
         }
         int offset = batch_idx * _shape.image_size();
+        UINT8* img_data = static_cast<UINT8*>(_data);
         Napi::Array imgList = Napi::Array::New(env);
         UINT32 size = bboxList.Length();
         for (UINT32 c = 0; c < size; c++) {
@@ -597,9 +597,9 @@ namespace annoa
             int picDim = Bw * Bh;
 
             Napi::Uint8Array outData = Napi::Uint8Array::New(env, spDim);
-            UINT8* result = reinterpret_cast<UINT8*>(outData.ArrayBuffer().Data()) + offset;
+            UINT8* result = reinterpret_cast<UINT8*>(outData.ArrayBuffer().Data());
 
-            capture_bbox_img_cpu(picDim, img_data, channels, width, height, x1, y1, Bw, Bh, result, _flag);
+            capture_bbox_img_cpu(picDim, &img_data[offset], channels, width, height, x1, y1, Bw, Bh, result, _flag);
 
             Napi::Value image = ImageWrap::Create(Napi::Number::New(env, channels), Napi::Number::New(env, Bh), Napi::Number::New(env, Bw));
             Napi::Object image_o = image.ToObject();
