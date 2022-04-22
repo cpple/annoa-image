@@ -1,9 +1,9 @@
 {
   "name": "annoa-image",
-  "version": "1.8.2",
+  "version": "1.8.4",
   "deprecated": false,
   "description": "annoa-image",
-  "main": "image.js",
+  "main": "index.js",
   "keywords": [
     "annoa"
   ],
@@ -16,7 +16,7 @@
   },
   "files": [
     "binding.gyp",
-    "image.js",
+    "index.js",
     "include/**",
     "src/**"
   ],

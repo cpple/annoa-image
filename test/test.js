@@ -1,5 +1,5 @@
 
-let image = require('../');
+let {Image, MateData} = require('../');
 
 let test = async function (arrO) {
     try{
@@ -38,7 +38,7 @@ let test = async function (arrO) {
         // console.error(JSON.stringify(image.GetNCHWData()));
         // console.error(JSON.stringify(Array.from(result)));
 
-        let img = new image.Image(3,5,5);
+        let img = new Image(3,5,5);
         let array = new Uint8Array(2*3*5*5);
         array.fill(151);
         img.SetNHWCData(array);
