@@ -13,7 +13,7 @@ declare module 'annoa-image' {
         Normalize(mean:Array<number> | Float32Array, std:Array<number> | Float32Array):MateData;
         MateData():MateData;
         ScaleSize(height:number, width:number):this;
-        ColorHSV():this;
+        ColorHSV(hue:number, saturation:number, value:number):this;
         CaptureImgByBoundingBox(boundingBox:Array<Float32Array | Uint32Array>, batch_idx:number):Image[];
     }
     class MateData {
