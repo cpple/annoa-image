@@ -10,7 +10,7 @@ declare module 'annoa-image' {
         RemoveAlpha():this;
         HorizontalFlip():this;
         RandomCrop(height:number, width:number, pad:number):Int32Array;
-        Normalize(mean:Array<number> | Float32Array, std:Array<number> | Float32Array, scale:number):MateData;
+        NormalizeToMateData(mean:Array<number> | Float32Array, std:Array<number> | Float32Array, scale:number):MateData;
         MateData():MateData;
         ScaleSize(height:number, width:number):this;
         ColorHSV(hue:number, saturation:number, value:number):this;
