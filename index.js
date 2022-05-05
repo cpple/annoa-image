@@ -6,6 +6,9 @@ var binding_path = nodePreGyp.find(path.resolve(path.join(__dirname, './package.
 var bindings = require(binding_path);
 let exp = {
     Image:bindings.Image,
-    MateData:bindings.MateData
+    MateData:bindings.MateData,
+    imgRandomCropHorizontalFlipNormalize:bindings.imgRandomCropHorizontalFlipNormalize,
+    imgNormalize:bindings.imgNormalize,
+    imgScale:bindings.imgScale
 };
 module.exports = exp;

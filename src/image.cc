@@ -399,8 +399,8 @@ namespace annoa
         UINT32 batch = args[5].ToNumber().Uint32Value();
         bool channelFirst = args[6].ToBoolean().Value();
 
-        float sh = oh * scaleh;
-        float sw = ow * scalew;
+        int sh = oh * scaleh;
+        int sw = ow * scalew;
 
         Napi::Uint8Array imgU8 = args[0].As<Napi::Uint8Array>();
 
@@ -413,7 +413,7 @@ namespace annoa
         UINT32 channels = length / (batch * (oh * ow));
         UINT8* img_data = reinterpret_cast<UINT8*>(imgU8.ArrayBuffer().Data());
         Shape sharp = Shape(batch, channels, oh, ow);
-        Napi::Uint8Array outData = Napi::Uint8Array::New(env, length);
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, batch * channels * sh * sw);
         UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
 
         uint8_to_uint8_scale_cpu(length, img_data, sharp, sh, sw, result, channelFirst);
