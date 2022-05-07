@@ -26,12 +26,16 @@ namespace annoa
         Napi::Value HorizontalFlip(const Napi::CallbackInfo& info);
         Napi::Value RandomCrop(const Napi::CallbackInfo& info);
         Napi::Value Normalize(const Napi::CallbackInfo& info);
+        Napi::Value NormalizeGPU(const Napi::CallbackInfo& info);
         Napi::Value MateData(const Napi::CallbackInfo& info);
         Napi::Value ScaleSize(const Napi::CallbackInfo& info);
         Napi::Value ColorHSV(const Napi::CallbackInfo& args);
         Napi::Value CaptureImgByBoundingBox(const Napi::CallbackInfo& args);
 
         Napi::Value ScaleSizeGPU(const Napi::CallbackInfo& info);
+        Napi::Value RandomCropGPU(const Napi::CallbackInfo& info);
+        Napi::Value HorizontalFlipGPU(const Napi::CallbackInfo& info);
+        Napi::Value ColorHSVGPU(const Napi::CallbackInfo& args);
     public:
         void SetData(int flag, Napi::Uint8Array& array_);
     private:

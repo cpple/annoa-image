@@ -60,12 +60,14 @@ public:
     static cudaStream_t RandStream() {
         return cuda_tool->RandStream_T();
     }
-    static void* AnnoaMallocCopyDevice(size_t byte, const void* ptr) {
+    static void* AnnoaMallocCopyDevice(size_t byte, const void* ptr = nullptr) {
 
         void* gpu_ptr_ = nullptr;
         checkCudaErrors(cudaMalloc(&gpu_ptr_, byte));
-        const cudaMemcpyKind put = cudaMemcpyHostToDevice;
-        checkCudaErrors(cudaMemcpy(gpu_ptr_, ptr, byte, put));
+        if (ptr) {
+            const cudaMemcpyKind put = cudaMemcpyHostToDevice;
+            checkCudaErrors(cudaMemcpy(gpu_ptr_, ptr, byte, put));
+        }
         return gpu_ptr_;
     }
     static void AnnoaDeviceCopyHost(const void* gpu_ptr, void* cpu_ptr, size_t byte) {
@@ -75,7 +77,7 @@ public:
     }
     static void AnnoaFreeMemDevice(void* gpu_ptr_) {
 
-        checkCudaErrors(cudaFree(&gpu_ptr_));
+        checkCudaErrors(cudaFree(gpu_ptr_));
         gpu_ptr_ = nullptr;
     }
     template <typename Dtype>

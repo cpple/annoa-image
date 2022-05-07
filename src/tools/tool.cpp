@@ -752,9 +752,9 @@ void uint8_to_uint8_color_o_kernel_cpu_(const int n, const UINT8* src_data, cons
         g8 = g > 255. ? UINT8(255) : (g < 0. ? UINT8(0) : static_cast<UINT8>(g));
         b8 = b > 255. ? UINT8(255) : (b < 0. ? UINT8(0) : static_cast<UINT8>(b));
         // write
-        dst_data[bIdx + 0] = r;
-        dst_data[bIdx + 1] = g;
-        dst_data[bIdx + 2] = b;
+        dst_data[bIdx + 0] = r8;
+        dst_data[bIdx + 1] = g8;
+        dst_data[bIdx + 2] = b8;
         for (int c = 3; c < shape.c; c++) {
             dst_data[bIdx + c] = src_data[bIdx + c];
         }
@@ -943,4 +943,12 @@ void random_crop_nhwc_cpu(const int N, const int channels, const int oh, const i
     // NOLINT_NEXT_LINE(whitespace/operators)
 
     random_crop_nhwc_kernel_cpu_(N, channels, oh, ow, h, w, p, a, y, m);
+}
+
+void gen_random_data(const int n, UINT32 mask, UINT32* data) {
+
+    std::random_device rd;
+    CPU_KERNEL_LOOP(index, n) {
+        data[index] = rd();
+    }
 }

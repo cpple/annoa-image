@@ -28,6 +28,16 @@ void float_to_float_convert_norm_cpu(const int N, const float scale, int batch, 
 void float_to_float_convert_norm_o_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const float* a, float* y);
 void scale_norm_cpu(const int N, const float scale, float* y);
 void scale_norm_cpu(const int N, const float scale, const UINT8* a, float* y);
+void gen_random_data(const int n, UINT32 mask, UINT32* data);
 
 //gpu
 void uint8_to_uint8_scale_gpu(const int N, const UINT8* a, const Shape& shape, const int sh, const int sw, UINT8* y, const bool& cf);
+void random_crop_gpu(const int N, const int channels, const int oh, const int ow,
+    const int h, const int w, const int p, const UINT32* rh, const UINT32* rw, const UINT8* a, UINT8* y, INT32* m);
+void random_crop_nhwc_gpu(const int N, const int channels, const int oh, const int ow,
+    const int h, const int w, const int p, const UINT32* rh, const UINT32* rw, const UINT8* a, UINT8* y, INT32* m);
+void horizontal_flip_gpu(const int N, const int c, const int h, const int w, UINT8* y);
+void horizontal_flip_nhwc_gpu(const int N, const int c, const int h, const int w, UINT8* y);
+void uint8_to_uint8_color_gpu(const int N, const UINT8* a, const Shape& shape, const float hue, const float sat, const float val, UINT8* y, const bool& cf);
+void uint8_to_float_convert_norm_gpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const UINT8* a, float* y);
+void uint8_to_float_convert_norm_o_gpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const UINT8* a, float* y);

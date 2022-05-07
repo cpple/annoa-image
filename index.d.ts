@@ -17,6 +17,10 @@ declare module 'annoa-image' {
         CaptureImgByBoundingBox(boundingBox:Array<Float32Array | Uint32Array>, batch_idx:number):Image[];
 
         ScaleSizeGPU(height:number, width:number):this;
+        RandomCropGPU(height:number, width:number, pad:number):Int32Array;
+        HorizontalFlipGPU():this;
+        ColorHSVGPU(hue:number, saturation:number, value:number):this;
+        NormalizeToMateDataGPU(mean:Array<number> | Float32Array, std:Array<number> | Float32Array, scale:number):MateData;
     }
     class MateData {
         constructor(channels:number, height:number, weight:number);

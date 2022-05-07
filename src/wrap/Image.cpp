@@ -19,9 +19,14 @@ namespace annoa
                 InstanceMethod("NormalizeToMateData", &ImageWrap::Normalize),
                 InstanceMethod("MateData", &ImageWrap::MateData),
                 InstanceMethod("ScaleSize", &ImageWrap::ScaleSize),
-                InstanceMethod("ScaleSizeGPU", &ImageWrap::ScaleSizeGPU),
                 InstanceMethod("ColorHSV", &ImageWrap::ColorHSV),
                 InstanceMethod("CaptureImgByBoundingBox", &ImageWrap::CaptureImgByBoundingBox),
+
+                InstanceMethod("ScaleSizeGPU", &ImageWrap::ScaleSizeGPU),
+                InstanceMethod("RandomCropGPU", &ImageWrap::RandomCropGPU),
+                InstanceMethod("HorizontalFlipGPU", &ImageWrap::HorizontalFlipGPU),
+                InstanceMethod("ColorHSVGPU", &ImageWrap::ColorHSVGPU),
+                InstanceMethod("NormalizeToMateDataGPU", &ImageWrap::NormalizeGPU),
             }
         );
         constructor = Napi::Persistent(func);
@@ -50,7 +55,7 @@ namespace annoa
             Napi::TypeError::New(env, "channel error expected").ThrowAsJavaScriptException();
             return;
         }
-        _shape = Shape(n,c,h,w);
+        _shape = Shape(n, c, h, w);
         info.This().ToObject().Set("n", n);
         info.This().ToObject().Set("c", c);
         info.This().ToObject().Set("h", h);
@@ -283,7 +288,7 @@ namespace annoa
 
         if ((!info[0].IsArray() || !info[1].IsArray()) &&
             (!IsTypeArray(info[0], napi_float32_array) ||
-            !IsTypeArray(info[1], napi_float32_array)))
+                !IsTypeArray(info[1], napi_float32_array)))
         {
             throw Napi::TypeError::New(env, "Wrong arguments");
         }
@@ -434,64 +439,6 @@ namespace annoa
 
         //throw Napi::TypeError::New(env, "Wrong arguments" + std::to_string(!_flag));
         uint8_to_uint8_scale_cpu(length, img_data, _shape, scaleh, scalew, result, _flag);
-        _shape.h = scaleh;
-        _shape.w = scalew;
-
-        _data = result;
-        info.This().ToObject().Set("data", outData);
-        info.This().ToObject().Set("h", _shape.h);
-        info.This().ToObject().Set("w", _shape.w);
-        return info.This();
-    }
-    Napi::Value ImageWrap::ScaleSizeGPU(const Napi::CallbackInfo& info) {
-
-        Napi::Env env = info.Env();
-
-        Napi::Value data = info.This().ToObject().Get("data");
-
-        if (data.IsNull()) {
-
-            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
-            return env.Null();
-        }
-
-        if (info.Length() < 2)
-        {
-            throw Napi::TypeError::New(env, "Wrong number of arguments");
-        }
-
-        if (!info[0].IsNumber() ||
-            !info[1].IsNumber())
-        {
-            throw Napi::TypeError::New(env, "Wrong arguments");
-        }
-
-        int scaleh = info[0].ToNumber().Int32Value();
-        int scalew = info[1].ToNumber().Int32Value();
-
-        int oh = _shape.height();
-        int ow = _shape.width();
-        //float sh = static_cast<float>(oh * scaleh);
-        //float sw = static_cast<float>(ow * scalew);
-
-        if (scaleh == oh && ow == scalew)
-        {
-            return info.This();
-        }
-        UINT32 channels = _shape.channel();
-        UINT32 length = _shape.number() * scaleh * scalew;
-        UINT8* img_data = reinterpret_cast<UINT8*>(_data);
-        Napi::Uint8Array outData = Napi::Uint8Array::New(env, length * channels);
-        UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
-
-        UINT32 DIM_SIZE_N = outData.ArrayBuffer().ByteLength();
-        UINT32 DIM_SIZE_O = _shape.data_size() * sizeof(UINT8);
-        //throw Napi::TypeError::New(env, "Wrong arguments" + std::to_string(!_flag));
-        void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(DIM_SIZE_O, img_data);
-        void* new_gpu = AnnoaCuda::AnnoaMallocCopyDevice(DIM_SIZE_N, result);
-        uint8_to_uint8_scale_gpu(length, (const UINT8*)source_gpu, _shape, scaleh, scalew, (UINT8*)new_gpu, _flag);
-        AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, result, DIM_SIZE_N);
-        checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
         _shape.h = scaleh;
         _shape.w = scalew;
 
@@ -689,5 +636,315 @@ namespace annoa
         self.Set("flag", _flag);
         self.Set("data", array_);
         _data = array_.ArrayBuffer().Data();
+    }
+    Napi::Value ImageWrap::ScaleSizeGPU(const Napi::CallbackInfo& info) {
+
+        Napi::Env env = info.Env();
+
+        Napi::Value data = info.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (info.Length() < 2)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if (!info[0].IsNumber() ||
+            !info[1].IsNumber())
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+
+        int scaleh = info[0].ToNumber().Int32Value();
+        int scalew = info[1].ToNumber().Int32Value();
+
+        int oh = _shape.height();
+        int ow = _shape.width();
+        //float sh = static_cast<float>(oh * scaleh);
+        //float sw = static_cast<float>(ow * scalew);
+
+        if (scaleh == oh && ow == scalew)
+        {
+            return info.This();
+        }
+        UINT32 channels = _shape.channel();
+        UINT32 length = _shape.number() * scaleh * scalew;
+        UINT8* img_data = reinterpret_cast<UINT8*>(_data);
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, length * channels);
+        UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
+
+        UINT32 DIM_SIZE_N = outData.ArrayBuffer().ByteLength();
+        UINT32 DIM_SIZE_O = _shape.data_size() * sizeof(UINT8);
+        //throw Napi::TypeError::New(env, "Wrong arguments" + std::to_string(!_flag));
+        void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(DIM_SIZE_O, img_data);
+        void* new_gpu = AnnoaCuda::AnnoaMallocCopyDevice(DIM_SIZE_N, result);
+        uint8_to_uint8_scale_gpu(length, (const UINT8*)source_gpu, _shape, scaleh, scalew, (UINT8*)new_gpu, _flag);
+        AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, result, DIM_SIZE_N);
+        checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
+        AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
+        checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
+        _shape.h = scaleh;
+        _shape.w = scalew;
+
+        _data = result;
+        info.This().ToObject().Set("data", outData);
+        info.This().ToObject().Set("h", _shape.h);
+        info.This().ToObject().Set("w", _shape.w);
+        return info.This();
+    }
+
+    Napi::Value ImageWrap::RandomCropGPU(const Napi::CallbackInfo& info) {
+
+        Napi::Env env = info.Env();
+
+        Napi::Value data = info.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (info.Length() < 3)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+        if (!info[0].IsNumber() || !info[1].IsNumber() || !info[2].IsNumber()) {
+            throw Napi::TypeError::New(env, "Wrong type of arguments");
+        }
+        int h = info[0].ToNumber().Int32Value();
+        int w = info[1].ToNumber().Int32Value();
+        int p = info[2].ToNumber().Int32Value();
+        int ow = _shape.width();
+        int oh = _shape.height();
+        int channel = _shape.channel();
+        if (h > (oh + 2 * p)) {
+
+            throw Napi::TypeError::New(env, "Wrong h check h > oh + 2 * p of arguments");
+        }
+        if (w > (ow + 2 * p)) {
+
+            throw Napi::TypeError::New(env, "Wrong w check w > ow + 2 * p of arguments");
+        }
+        _shape.h = h;
+        _shape.w = w;
+        int size = _shape.data_size();
+        int number = _shape.number();
+        Napi::Uint8Array data_array = Napi::Uint8Array::New(env, _shape.data_size());
+        Napi::Int32Array move_array = Napi::Int32Array::New(env, number * 2);
+        void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(data_array.ByteLength(), _data);
+        void* new_gpu = AnnoaCuda::AnnoaMallocCopyDevice(data_array.ByteLength());
+        void* new_move_gpu = AnnoaCuda::AnnoaMallocCopyDevice(move_array.ByteLength());
+        std::vector<UINT32> random_h(number);
+        gen_random_data(number, p, random_h.data());
+        std::vector<UINT32> random_w(number);
+        gen_random_data(number, p, random_w.data());
+        void* random_h_gpu = AnnoaCuda::AnnoaMallocCopyDevice(number * sizeof(UINT32), random_h.data());
+        void* random_w_gpu = AnnoaCuda::AnnoaMallocCopyDevice(number * sizeof(UINT32), random_w.data());
+
+        if (!_flag) {
+            random_crop_gpu(size, channel, oh, ow, h, w, p, (const UINT32*)random_h_gpu, (const UINT32*)random_w_gpu, (const UINT8*)(source_gpu), (UINT8*)(new_gpu), (int*)(new_move_gpu));
+        }
+        else {
+            random_crop_nhwc_gpu(size, channel, oh, ow, h, w, p, (const UINT32*)random_h_gpu, (const UINT32*)random_w_gpu, (const UINT8*)(source_gpu), (UINT8*)(new_gpu), (int*)(new_move_gpu));
+        }
+        checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
+        AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, data_array.ArrayBuffer().Data(), data_array.ByteLength());
+        AnnoaCuda::AnnoaDeviceCopyHost(new_move_gpu, move_array.ArrayBuffer().Data(), move_array.ByteLength());
+        AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(new_move_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(random_h_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(random_w_gpu);
+        _data = data_array.ArrayBuffer().Data();
+        info.This().ToObject().Set("data", data_array);
+        info.This().ToObject().Set("h", _shape.h);
+        info.This().ToObject().Set("w", _shape.w);
+        return move_array;
+    }
+
+    Napi::Value ImageWrap::HorizontalFlipGPU(const Napi::CallbackInfo& info) {
+
+        Napi::Env env = info.Env();
+
+        Napi::Value data = info.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+        void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(_shape.data_size() * sizeof(UINT8), _data);
+
+        if (!_flag) {
+            horizontal_flip_gpu(_shape.grid_size(), _shape.channel(), _shape.height(), _shape.width(), (UINT8*)(source_gpu));
+        }
+        else {
+            horizontal_flip_nhwc_gpu(_shape.grid_size(), _shape.channel(), _shape.height(), _shape.width(), (UINT8*)(source_gpu));
+        }
+        AnnoaCuda::AnnoaDeviceCopyHost(source_gpu, _data, _shape.data_size() * sizeof(UINT8));
+        AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
+        return info.This();
+    }
+
+    Napi::Value ImageWrap::ColorHSVGPU(const Napi::CallbackInfo& args)
+    {
+        Napi::Env env = args.Env();
+
+        Napi::Value data = args.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (args.Length() < 3)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if (!args[0].IsNumber() || !args[1].IsNumber() ||
+            !args[2].IsNumber())
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+
+        float hue = args[0].ToNumber().FloatValue();
+        float sat = args[1].ToNumber().FloatValue();
+        float val = args[2].ToNumber().FloatValue();
+
+        UINT32 length = _shape.data_size();
+        UINT32 pixels = _shape.grid_size();
+        UINT32 channels = _shape.channel();
+        if (channels < 3 || channels > 4)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+        UINT8* img_data = reinterpret_cast<UINT8*>(_data);
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, length);
+        UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
+
+        void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(outData.ByteLength(), img_data);
+        void* new_gpu = AnnoaCuda::AnnoaMallocCopyDevice(outData.ByteLength());
+        uint8_to_uint8_color_gpu(pixels, (UINT8*)source_gpu, _shape, hue, sat, val, (UINT8*)new_gpu, _flag);
+        AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, result, outData.ByteLength());
+        AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
+        _data = result;
+        args.This().ToObject().Set("data", outData);
+
+        return args.This();
+    }
+    Napi::Value ImageWrap::NormalizeGPU(const Napi::CallbackInfo& info) {
+
+        Napi::Env env = info.Env();
+
+        Napi::Value data = info.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (info.Length() < 2)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if ((!info[0].IsArray() || !info[1].IsArray()) &&
+            (!IsTypeArray(info[0], napi_float32_array) ||
+                !IsTypeArray(info[1], napi_float32_array)))
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+
+        Napi::Float32Array mean_;
+
+        if (info[0].IsArray()) {
+            Napi::Array mean_array = info[0].As<Napi::Array>();
+            int length_m = mean_array.Length();
+            mean_ = Napi::Float32Array::New(env, length_m);
+            for (UINT32 i = 0; i < mean_array.Length(); i++) {
+                Napi::Value m = mean_array.Get(i);
+                if (!m.IsNumber()) {
+                    throw Napi::TypeError::New(env, "mean value error....");
+                }
+                mean_.Set(i, m.ToNumber());
+            }
+        }
+        else if (IsTypeArray(info[0], napi_float32_array)) {
+
+            mean_ = info[0].As<Napi::Float32Array>();
+        }
+        UINT32 lengthM = mean_.ElementLength();
+        float* mean = reinterpret_cast<float*>(mean_.ArrayBuffer().Data());
+        Napi::Float32Array std_;
+        if (info[1].IsArray()) {
+
+            Napi::Array std_array = info[0].As<Napi::Array>();
+            int length_s = std_array.Length();
+            std_ = Napi::Float32Array::New(env, length_s);
+            for (UINT32 i = 0; i < std_array.Length(); i++) {
+                Napi::Value s = std_array.Get(i);
+                if (!s.IsNumber()) {
+                    throw Napi::TypeError::New(env, "std value error....");
+                }
+                std_.Set(i, s.ToNumber());
+            }
+        }
+        else if (IsTypeArray(info[1], napi_float32_array)) {
+
+            std_ = info[1].As<Napi::Float32Array>();
+        }
+        UINT32 lengthS = std_.ElementLength();
+        float* stdv = reinterpret_cast<float*>(std_.ArrayBuffer().Data());
+        //printf("%d", lengthM);
+        if (lengthM != lengthS || lengthM < (UINT32)_shape.channel()) {
+
+            throw Napi::TypeError::New(env, "Wrong arguments channels != lengthM || channels < lengthS");
+        }
+        float scale = 1.0f;
+        if (info.Length() == 3 && info[2].IsNumber())
+        {
+            scale = info[2].ToNumber().FloatValue();
+        }
+
+        Napi::Float32Array outData = Napi::Float32Array::New(env, _shape.data_size());
+        float* result = (float*)outData.ArrayBuffer().Data();
+        void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(_shape.data_size() * sizeof(UINT8), _data);
+        void* new_gpu = AnnoaCuda::AnnoaMallocCopyDevice(outData.ByteLength());
+        void* mean_gpu = AnnoaCuda::AnnoaMallocCopyDevice(mean_.ByteLength(), mean);
+        void* stdv_gpu = AnnoaCuda::AnnoaMallocCopyDevice(std_.ByteLength(), stdv);
+        if (_flag)
+        {
+            uint8_to_float_convert_norm_o_gpu(_shape.data_size(), scale, _shape.number(), lengthM, (const float*)mean_gpu, (const float*)stdv_gpu, (UINT8*)source_gpu, (float*)new_gpu);
+        }
+        else
+        {
+            uint8_to_float_convert_norm_gpu(_shape.data_size(), scale, _shape.number(), lengthM, (const float*)mean_gpu, (const float*)stdv_gpu, (UINT8*)source_gpu, (float*)new_gpu);
+        }
+        AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, result, outData.ByteLength());
+        AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(mean_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(stdv_gpu);
+        //Napi::Number number = Napi::Number::New(env, _shape.number());
+        Napi::Number channel = Napi::Number::New(env, _shape.channel());
+        Napi::Number height = Napi::Number::New(env, _shape.height());
+        Napi::Number width = Napi::Number::New(env, _shape.width());
+
+        Napi::Value mate = MateDataWrap::Create(channel, height, width);
+        Napi::Object mate_o = mate.ToObject();
+        MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
+        mate_->SetData(_flag, outData);
+        return mate;
     }
 }
