@@ -1,8 +1,11 @@
+#pragma once
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "./cuda/cuda.h"
 #include "./util.h"
 
+//cpu
 void remove_alpha_cpu(const int N, const UINT8* a, UINT8* y);
 void remove_alpha_chw_cpu(const int N, const int dima, const int dimy, const UINT8* a, UINT8* y);
 void uint8_to_float_convert_cpu(const int N, const float scale, const UINT8* a, float* y);
@@ -26,3 +29,5 @@ void float_to_float_convert_norm_o_cpu(const int N, const float scale, int batch
 void scale_norm_cpu(const int N, const float scale, float* y);
 void scale_norm_cpu(const int N, const float scale, const UINT8* a, float* y);
 
+//gpu
+void uint8_to_uint8_scale_gpu(const int N, const UINT8* a, const Shape& shape, const int sh, const int sw, UINT8* y, const bool& cf);

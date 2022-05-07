@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "../../include/cuda/cuda.h"
+#include "../../include/napi.h"
 #include "../../include/util.h"
 #include "../../include/tool.h"
 
@@ -28,6 +30,8 @@ namespace annoa
         Napi::Value ScaleSize(const Napi::CallbackInfo& info);
         Napi::Value ColorHSV(const Napi::CallbackInfo& args);
         Napi::Value CaptureImgByBoundingBox(const Napi::CallbackInfo& args);
+
+        Napi::Value ScaleSizeGPU(const Napi::CallbackInfo& info);
     public:
         void SetData(int flag, Napi::Uint8Array& array_);
     private:

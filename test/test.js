@@ -43,8 +43,9 @@ let test = async function (arrO) {
         array.fill(151);
         img.SetNHWCData(array);
         let move = img.RandomCrop(3,3, 2);
-        console.error(img.GetNHWCData(), move)
-        img.ScaleSize(6, 6);
+        console.error(img.GetNCHWData(), move)
+        let c = 10;
+        img.ScaleSizeGPU(6, 6);
         //let mata = img.NormalizeToMateData(Float32Array.from([0.40789654, 0.44719302, 0.47026115]), Float32Array.from([0.28863828, 0.27408164, 0.27809835]), 1/256);
         //.Scale(1/256).Normalize(Float32Array.from([0.40789654, 0.44719302, 0.47026115]), Float32Array.from([0.28863828, 0.27408164, 0.27809835]));
 

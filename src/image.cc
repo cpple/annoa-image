@@ -6,11 +6,13 @@
 #include <sstream>
 
 #include <string>
+#include "../include/cuda/cuda.h"
 #include "../include/util.h"
 #include "../include/tool.h"
 #include "../include/wrap/Image.h"
 #include "../include/wrap/MateData.h"
 #define NODE_LESS_THAN (!(NODE_VERSION_AT_LEAST(0, 5, 4)))
+
 namespace annoa
 {
     Napi::Value removeImgBufferAlpha(const Napi::CallbackInfo& info)
@@ -475,6 +477,8 @@ namespace annoa
 	}
 
     Napi::Object init(Napi::Env env, Napi::Object exports) {
+
+        AnnoaCuda::init();
         exports.Set(Napi::String::New(env, "removeAlpha"), Napi::Function::New(env, removeImgBufferAlpha));
         exports.Set(Napi::String::New(env, "captureBBImg"), Napi::Function::New(env, captureImgByBoundingBox));
         exports.Set(Napi::String::New(env, "convertNetData"), Napi::Function::New(env, convertImgDataToNetData));

@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "../../include/NAPI.h"
 #include "../../include/util.h"
 #include "../../include/tool.h"
 
