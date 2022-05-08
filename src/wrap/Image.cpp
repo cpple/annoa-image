@@ -688,6 +688,8 @@ namespace annoa
         checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
         AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
+        source_gpu = nullptr;
+        new_gpu = nullptr;
         checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
         _shape.h = scaleh;
         _shape.w = scalew;
@@ -762,6 +764,11 @@ namespace annoa
         AnnoaCuda::AnnoaFreeMemDevice(new_move_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(random_h_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(random_w_gpu);
+        source_gpu = nullptr;
+        new_gpu = nullptr;
+        new_move_gpu = nullptr;
+        random_h_gpu = nullptr;
+        random_w_gpu = nullptr;
         _data = data_array.ArrayBuffer().Data();
         info.This().ToObject().Set("data", data_array);
         info.This().ToObject().Set("h", _shape.h);
@@ -790,6 +797,7 @@ namespace annoa
         }
         AnnoaCuda::AnnoaDeviceCopyHost(source_gpu, _data, _shape.data_size() * sizeof(UINT8));
         AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
+        source_gpu = nullptr;
         return info.This();
     }
 
@@ -837,6 +845,8 @@ namespace annoa
         AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, result, outData.ByteLength());
         AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
+        source_gpu = nullptr;
+        new_gpu = nullptr;
         _data = result;
         args.This().ToObject().Set("data", outData);
 
@@ -936,6 +946,10 @@ namespace annoa
         AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(mean_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(stdv_gpu);
+        source_gpu = nullptr;
+        new_gpu = nullptr;
+        mean_gpu = nullptr;
+        stdv_gpu = nullptr;
         //Napi::Number number = Napi::Number::New(env, _shape.number());
         Napi::Number channel = Napi::Number::New(env, _shape.channel());
         Napi::Number height = Napi::Number::New(env, _shape.height());
