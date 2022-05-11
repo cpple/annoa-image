@@ -570,7 +570,6 @@ __global__ void uint8_to_float_convert_norm_kernel_gpu_(const int n, const float
         int spDim = n / (b * c);
         int bDim = spDim * c;
 
-        int batch = index / bDim;
         int tmpBIdx = (index % bDim);
         int channels = tmpBIdx / spDim;
         float v = static_cast<float>(a[index]);
