@@ -49,7 +49,7 @@ namespace annoa
             Napi::TypeError::New(env, "channel error expected").ThrowAsJavaScriptException();
             return;
         }
-        _shape = Shape(n,c,h,w);
+        _shape.init(n,c,h,w);
         info.This().ToObject().Set("n", n);
         info.This().ToObject().Set("c", c);
         info.This().ToObject().Set("h", h);
