@@ -58,6 +58,12 @@ struct Shape
     const int& number() {
         return n;
     }
+    void init(int _n, int _c, int _h, int _w) {
+        n = _n;
+        c = _c;
+        h = _h;
+        w = _w;
+    }
     int w;
     int h;
     int c;
