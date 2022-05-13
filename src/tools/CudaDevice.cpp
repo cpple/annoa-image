@@ -29,7 +29,6 @@ CudaTool::CudaTool() {
     init();
 }
 CudaTool::~CudaTool() {
-    printf("fuck you!!!!!!!!!");
     cudaStreamDestroy(stream_);
     cudaStreamDestroy(stream_rand_);
 }
