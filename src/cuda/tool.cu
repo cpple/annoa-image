@@ -190,8 +190,9 @@ __global__ void random_crop_kernel_gpu_(const int n, const int c, const int oh, 
         int sh = 0;
         if (p > 0)
         {
-            sh = rh[batch] % ((oh + 2 * p) - h);
-            sw = rw[batch] % ((ow + 2 * p) - w);
+            sh = static_cast<int>(rh[batch]) % ((oh + 2 * p) - h);
+            sw = static_cast<int>(rw[batch]) % ((ow + 2 * p) - w);
+            //printf("random_crop_kernel_gpu_:%d %d %d %d\n",rh[batch], rw[batch], sh, sw);
         }
 
         int tmpBIdx = (index % bDim);
@@ -206,6 +207,8 @@ __global__ void random_crop_kernel_gpu_(const int n, const int c, const int oh, 
 
         int moveH = sh - p;
         int moveW = sw - p;
+        m[batch * 2] = moveH;
+        m[batch * 2 + 1] = moveW;
 
         inputH = moveH + outH;
         inputW = moveW + outW;
@@ -243,12 +246,11 @@ __global__ void random_crop_nhwc_kernel_gpu_(const int n, const int c, const int
         int sh = 0;
         if (p > 0)
         {
-            sh = rh[batch] % ((oh + 2 * p) - h);
-            sw = rw[batch] % ((ow + 2 * p) - w);
+            sh = static_cast<int>(rh[batch]) % ((oh + 2 * p) - h);
+            sw = static_cast<int>(rw[batch]) % ((ow + 2 * p) - w);
+            //printf("random_crop_nhwc_kernel_gpu_:%d %d\n", sh, sw);
         }
 
-        m[batch * 2] = sh - p;
-        m[batch * 2 + 1] = sw - p;
         int tmpBIdx = (index % bDim);
 
         int channels = tmpBIdx % c;
@@ -265,6 +267,8 @@ __global__ void random_crop_nhwc_kernel_gpu_(const int n, const int c, const int
 
         int moveH = sh - p;
         int moveW = sw - p;
+        m[batch * 2] = moveH;
+        m[batch * 2 + 1] = moveW;
 
         inputH = moveH + outH;
         inputW = moveW + outW;

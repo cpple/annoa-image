@@ -949,6 +949,6 @@ void gen_random_data(const int n, UINT32 mask, UINT32* data) {
 
     std::random_device rd;
     CPU_KERNEL_LOOP(index, n) {
-        data[index] = rd();
+        data[index] = rd() % mask;
     }
 }

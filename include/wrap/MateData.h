@@ -32,6 +32,9 @@ namespace annoa
             _shape.n = number;
         };
 
+        inline void set_flag(int flag) {
+            _flag = flag;
+        };
     private:
         static Napi::FunctionReference constructor;
         Shape _shape;

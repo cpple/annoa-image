@@ -355,15 +355,15 @@ namespace annoa
             uint8_to_float_convert_norm_cpu(_shape.data_size(), scale, _shape.number(), lengthM, mean, stdv, (UINT8*)_data, result);
         }
         //Napi::Number number = Napi::Number::New(env, _shape.number());
-        Napi::Number channel = Napi::Number::New(env, _shape.channel());
-        Napi::Number height = Napi::Number::New(env, _shape.height());
-        Napi::Number width = Napi::Number::New(env, _shape.width());
+        //Napi::Number channel = Napi::Number::New(env, _shape.channel());
+        //Napi::Number height = Napi::Number::New(env, _shape.height());
+        //Napi::Number width = Napi::Number::New(env, _shape.width());
 
-        Napi::Value mate = MateDataWrap::Create(channel, height, width);
-        Napi::Object mate_o = mate.ToObject();
-        MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
-        mate_->SetData(_flag, outData);
-        return mate;
+        //Napi::Value mate = MateDataWrap::Create(channel, height, width);
+        //Napi::Object mate_o = mate.ToObject();
+        //MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
+        //mate_->SetData(_flag, outData);
+        return outData;
     }
     Napi::Value ImageWrap::MateData(const Napi::CallbackInfo& info) {
 
@@ -386,15 +386,15 @@ namespace annoa
         float* result = (float*)outData.ArrayBuffer().Data();
         scale_norm_cpu(_shape.data_size(), scale, (UINT8*)_data, result);
         //Napi::Number number = Napi::Number::New(env, _shape.number());
-        Napi::Number channel = Napi::Number::New(env, _shape.channel());
-        Napi::Number height = Napi::Number::New(env, _shape.height());
-        Napi::Number width = Napi::Number::New(env, _shape.width());
+        //Napi::Number channel = Napi::Number::New(env, _shape.channel());
+        //Napi::Number height = Napi::Number::New(env, _shape.height());
+        //Napi::Number width = Napi::Number::New(env, _shape.width());
 
-        Napi::Value mate = MateDataWrap::Create(channel, height, width);
-        Napi::Object mate_o = mate.ToObject();
-        MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
-        mate_->SetData(_flag, outData);
-        return mate;
+        //Napi::Value mate = MateDataWrap::Create(channel, height, width);
+        //Napi::Object mate_o = mate.ToObject();
+        //MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
+        //mate_->SetData(_flag, outData);
+        return outData;
     }
     Napi::Value ImageWrap::ScaleSize(const Napi::CallbackInfo& info) {
 
@@ -744,12 +744,19 @@ namespace annoa
         void* new_gpu = AnnoaCuda::AnnoaMallocCopyDevice(data_array.ByteLength());
         void* new_move_gpu = AnnoaCuda::AnnoaMallocCopyDevice(move_array.ByteLength());
         std::vector<UINT32> random_h(number);
-        gen_random_data(number, p, random_h.data());
+        gen_random_data(number, 65535, random_h.data());
+        //for (int i = 0; i < number; i++) {
+        //    printf("random_h gen_random_data[%d]:%u\n", i, random_h[i]);
+        //}
         std::vector<UINT32> random_w(number);
-        gen_random_data(number, p, random_w.data());
+        gen_random_data(number, 65535, random_w.data());
+        //for (int i = 0; i < number; i++) {
+        //    printf("random_w gen_random_data[%d]:%u\n", i, random_w[i]);
+        //}
         void* random_h_gpu = AnnoaCuda::AnnoaMallocCopyDevice(number * sizeof(UINT32), random_h.data());
         void* random_w_gpu = AnnoaCuda::AnnoaMallocCopyDevice(number * sizeof(UINT32), random_w.data());
 
+        //printf("random_crop_gpu random_crop_gpu:%d %d %d %d %d", oh, ow, h, w, p);
         if (!_flag) {
             random_crop_gpu(size, channel, oh, ow, h, w, p, (const UINT32*)random_h_gpu, (const UINT32*)random_w_gpu, (const UINT8*)(source_gpu), (UINT8*)(new_gpu), (int*)(new_move_gpu));
         }
@@ -951,14 +958,14 @@ namespace annoa
         mean_gpu = nullptr;
         stdv_gpu = nullptr;
         //Napi::Number number = Napi::Number::New(env, _shape.number());
-        Napi::Number channel = Napi::Number::New(env, _shape.channel());
-        Napi::Number height = Napi::Number::New(env, _shape.height());
-        Napi::Number width = Napi::Number::New(env, _shape.width());
+        //Napi::Number channel = Napi::Number::New(env, _shape.channel());
+        //Napi::Number height = Napi::Number::New(env, _shape.height());
+        //Napi::Number width = Napi::Number::New(env, _shape.width());
 
-        Napi::Value mate = MateDataWrap::Create(channel, height, width);
-        Napi::Object mate_o = mate.ToObject();
-        MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
-        mate_->SetData(_flag, outData);
-        return mate;
+        //Napi::Value mate = MateDataWrap::Create(channel, height, width);
+        //Napi::Object mate_o = mate.ToObject();
+        //MateDataWrap *mate_ = Napi::ObjectWrap<MateDataWrap>::Unwrap(mate_o);
+        //mate_->SetData(_flag, outData);
+        return outData;
     }
 }
