@@ -3,7 +3,7 @@
 #include <math.h>
 #include "./util.h"
 
-void remove_alpha_cpu(const int N, const UINT8* a, UINT8* y);
+void remove_alpha_cpu(const int N, const int c, const UINT8* a, UINT8* y);
 void remove_alpha_chw_cpu(const int N, const int dima, const int dimy, const UINT8* a, UINT8* y);
 void uint8_to_float_convert_cpu(const int N, const float scale, const UINT8* a, float* y);
 void uint8_to_float_convert_norm_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const UINT8* a, float* y);
@@ -25,4 +25,5 @@ void float_to_float_convert_norm_cpu(const int N, const float scale, int batch, 
 void float_to_float_convert_norm_o_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const float* a, float* y);
 void scale_norm_cpu(const int N, const float scale, float* y);
 void scale_norm_cpu(const int N, const float scale, const UINT8* a, float* y);
+void uint8_to_uint8_grey_cpu(const int N, const UINT8* a, const Shape& shape, const int& channels, const bool has_alpha_old, float gamma, UINT8* out, const bool& cf);
 

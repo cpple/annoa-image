@@ -15,6 +15,7 @@ declare module 'annoa-image' {
         ScaleSize(height:number, width:number):this;
         ColorHSV(hue:number, saturation:number, value:number):this;
         CaptureImgByBoundingBox(boundingBox:Array<Float32Array | Uint32Array>, batch_idx:number):Image[];
+        GreyScale(remove_alpha?:boolean, rgb_merged?:boolean, gamma?:number):this;
     }
     class MateData {
         constructor(channels:number, height:number, weight:number);

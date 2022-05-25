@@ -28,6 +28,7 @@ namespace annoa
         Napi::Value ScaleSize(const Napi::CallbackInfo& info);
         Napi::Value ColorHSV(const Napi::CallbackInfo& args);
         Napi::Value CaptureImgByBoundingBox(const Napi::CallbackInfo& args);
+        Napi::Value GreyScale(const Napi::CallbackInfo& info);
     public:
         void SetData(int flag, Napi::Uint8Array& array_);
     private:
@@ -35,6 +36,7 @@ namespace annoa
         Shape _shape;
         void* _data = nullptr;
         INT8 _flag = 0;
+        bool _has_alpha = false;
     };
 }
 #endif

@@ -43,7 +43,7 @@ namespace annoa
         Napi::Uint8Array out = Napi::Uint8Array::New(env, bytes / sizeof(UINT8));
 		UINT8 * result = reinterpret_cast<UINT8 *>(out.ArrayBuffer().Data());
 
-		remove_alpha_cpu(pix_count, img_data, result);
+        remove_alpha_cpu(pix_count, 4, img_data, result);
 
         return out;
 	}

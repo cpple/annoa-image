@@ -21,6 +21,7 @@ namespace annoa
                 InstanceMethod("ScaleSize", &ImageWrap::ScaleSize),
                 InstanceMethod("ColorHSV", &ImageWrap::ColorHSV),
                 InstanceMethod("CaptureImgByBoundingBox", &ImageWrap::CaptureImgByBoundingBox),
+                InstanceMethod("GreyScale", &ImageWrap::GreyScale),
             }
         );
         constructor = Napi::Persistent(func);
@@ -42,18 +43,26 @@ namespace annoa
         }
 
         int n = 0;
+        _has_alpha = false;
         int c = info[0].ToNumber();
         int h = info[1].ToNumber();
         int w = info[2].ToNumber();
+        if (length == 4 && info[3].IsBoolean()) {
+            _has_alpha = info[3].ToBoolean();
+        }
         if (c < 1 || c > 4) {
             Napi::TypeError::New(env, "channel error expected").ThrowAsJavaScriptException();
             return;
+        }
+        if (c == 4) {
+            _has_alpha = true;
         }
         _shape.init(n,c,h,w);
         info.This().ToObject().Set("n", n);
         info.This().ToObject().Set("c", c);
         info.This().ToObject().Set("h", h);
         info.This().ToObject().Set("w", w);
+        info.This().ToObject().Set("has_alpha", _has_alpha);
         info.This().ToObject().Set("flag", _flag);
         info.This().ToObject().Set("data", env.Null());
     }
@@ -176,21 +185,31 @@ namespace annoa
             return env.Null();
         }
 
-        if (_shape.channel() != 4) {
+        if (_shape.channel() != 4 && !_has_alpha) {
 
-            return env.Null();
+            return info.This();
         }
-        _shape.c = 3;
-        Napi::Uint8Array data_array = Napi::Uint8Array::New(env, _shape.data_size());
+        if (!_has_alpha) {
+            return info.This();
+        }
+        const int c = _shape.c - 1;
+        _has_alpha = false;
+        int length = _shape.data_size();
+        UINT32 pix_count = _shape.grid_size();
+        Napi::Uint8Array out = Napi::Uint8Array::New(env, (pix_count * c));
+        UINT8 * result = reinterpret_cast<UINT8 *>(out.ArrayBuffer().Data());
         if (_flag) {
-            remove_alpha_cpu(_shape.grid_size(), (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()));
+            remove_alpha_cpu(pix_count, c, (const UINT8*)(_data), result);
         }
         else {
-            remove_alpha_chw_cpu(_shape.number(), _shape.channel_size() * 4, _shape.image_size(), (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()));
+            remove_alpha_chw_cpu(_shape.number(), _shape.image_size(), c * _shape.channel_size(), (const UINT8*)(_data), result);
             //memcpy(data_array.ArrayBuffer().Data(), _data, data_array.ByteLength());
         }
-        _data = data_array.ArrayBuffer().Data();
-        info.This().ToObject().Set("data", data_array);
+        _shape.c = c;
+        _data = result;
+        info.This().ToObject().Set("has_alpha", _has_alpha);
+        info.This().ToObject().Set("c", c);
+        info.This().ToObject().Set("data", out);
         return info.This();
     }
     Napi::Value ImageWrap::HorizontalFlip(const Napi::CallbackInfo& info) {
@@ -630,5 +649,68 @@ namespace annoa
         self.Set("flag", _flag);
         self.Set("data", array_);
         _data = array_.ArrayBuffer().Data();
+    }
+
+    Napi::Value ImageWrap::GreyScale(const Napi::CallbackInfo& args)
+    {
+        Napi::Env env = args.Env();
+
+        Napi::Value data = args.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (_shape.c < 3) {
+
+            Napi::TypeError::New(env, "rgb data are not intact expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        bool remove_alpha = false;
+        bool rgb_merge = false;
+        float gamma = 2.2f;
+        if (args.Length() > 0 && args[0].IsBoolean())
+        {
+            remove_alpha = args[0].ToBoolean();
+        }
+        if (args.Length() > 1 && args[1].IsBoolean())
+        {
+            rgb_merge = args[1].ToBoolean();
+        }
+
+        if (args.Length() > 2 && !args[2].IsNumber())
+        {
+            gamma = args[2].ToNumber().FloatValue();
+        }
+        int channel = _shape.c;
+        bool has_alpha_old = _has_alpha;
+        if (!has_alpha_old) {
+            remove_alpha = true;
+        }
+        if (remove_alpha && _has_alpha) {
+            channel -= 1;
+            _has_alpha = false;
+        }
+        if (rgb_merge) {
+            channel = _has_alpha ? 2 : 1;
+        }
+
+        UINT32 length = _shape.data_size();
+        UINT32 pixels = _shape.grid_size();
+        UINT32 channels = _shape.channel();
+        UINT8* img_data = reinterpret_cast<UINT8*>(_data);
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, channel * pixels);
+        UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
+        uint8_to_uint8_grey_cpu(pixels, img_data, _shape, channel, has_alpha_old, gamma, result, _flag);
+        _shape.c = channel;
+        _data = result;
+        args.This().ToObject().Set("has_alpha", _has_alpha);
+        args.This().ToObject().Set("c", channel);
+        args.This().ToObject().Set("data", outData);
+
+        return args.This();
     }
 }
