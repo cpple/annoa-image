@@ -85,19 +85,21 @@ void nhwc_to_nchw_cpu(const int N, const int c, const int h, const int w, const 
     nhwc_to_nchw_kernel_cpu_(N, c, h, w, a, y);
 }
 
-void remove_alpha_kernel_cpu_(const int n, const UINT8* a, UINT8* y) {
-	CPU_KERNEL_LOOP(index, n) {
-		int r = index * 3;
-		int o = index * 4;
-		y[r] = a[o];
-		y[r + 1] = a[o + 1];
-		y[r + 2] = a[o + 2];
-	}
+void remove_alpha_kernel_cpu_(const int n, const int c, const UINT8* a, UINT8* y) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        int r = index * c;
+        int o = index * (c + int(1));
+        for (int _c = 0; _c < c; _c++) {
+
+            y[r + _c] = a[o + _c];
+        }
+    }
 }
 
-void remove_alpha_cpu(const int N, const UINT8* a, UINT8* y) {
+void remove_alpha_cpu(const int N, const int c, const UINT8* a, UINT8* y) {
 	// NOLINT_NEXT_LINE(whitespace/operators)
-	remove_alpha_kernel_cpu_(N, a, y);
+    remove_alpha_kernel_cpu_(N, c, a, y);
 }
 
 void remove_alpha_chw_kernel_cpu_(const int n, const int dima, const int dimy, const UINT8* a, UINT8* y) {
@@ -857,7 +859,7 @@ void random_crop_kernel_cpu_(const int n, const int c, const int oh, const int o
 
         int inputH = outH;
         int inputW = outW;
-        float v = 0;
+        UINT8 v = 0;
 
         int moveH = sh - p;
         int moveW = sw - p;
@@ -920,7 +922,7 @@ void random_crop_nhwc_kernel_cpu_(const int n, const int c, const int oh, const 
 
         int inputH = outH;
         int inputW = outW;
-        float v = 0;
+        UINT8 v = 0;
 
         int moveH = sh - p;
         int moveW = sw - p;
@@ -944,11 +946,112 @@ void random_crop_nhwc_cpu(const int N, const int channels, const int oh, const i
 
     random_crop_nhwc_kernel_cpu_(N, channels, oh, ow, h, w, p, a, y, m);
 }
-
 void gen_random_data(const int n, UINT32 mask, UINT32* data) {
 
     std::random_device rd;
     CPU_KERNEL_LOOP(index, n) {
         data[index] = rd() % mask;
     }
+}
+void uint8_to_uint8_grey_nhwc_cpu_(const int n, const UINT8* a, const int& channels_a, const int& channels_r, const bool has_alpha_old, float gamma, UINT8* out) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        int ad = index * channels_r;
+        int o = index * channels_a;
+        const float r = static_cast<const float>(a[o + 0]);
+        const float g = static_cast<const float>(a[o + 1]);
+        const float b = static_cast<const float>(a[o + 2]);
+        float alpha = 255;
+        if (has_alpha_old) {
+            alpha = static_cast<const float>(a[o + 3]);
+
+        }
+        UINT8 grey = static_cast<UINT8>(pow((pow(r, gamma) + pow(g * float(1.5), gamma) + pow(float(0.6) * b, gamma)) / (1 + pow(1.5, gamma) + pow(0.6, gamma)), (1 / gamma)));
+        switch (channels_r) {
+        case 1: {
+            out[ad] = grey;
+            break;
+        }
+        case 2: {
+            out[ad] = grey;
+            out[ad + 1] = alpha;
+            break;
+        }
+        case 3: {
+            out[ad] = grey;
+            out[ad + 1] = grey;
+            out[ad + 2] = grey;
+            break;
+        }
+        case 4: {
+            out[ad] = grey;
+            out[ad + 1] = grey;
+            out[ad + 2] = grey;
+            out[ad + 3] = alpha;
+            break;
+        }
+
+        }
+
+    }
+
+}
+
+void uint8_to_uint8_grey_nchw_cpu_(const int n, const UINT8* a, const Shape& shape, const int& channels_r, const bool has_alpha_old, float gamma, UINT8* out) {
+    CPU_KERNEL_LOOP(index, n) {
+
+        int pic_idx = index % (shape.h * shape.w);
+        int mini_size = shape.c * shape.h * shape.w;
+        int b_ = index / (shape.h * shape.w);
+        int x_ = pic_idx % shape.w;
+        int y_ = pic_idx / shape.w;
+
+        const float r = static_cast<const float>(a[b_ * shape.c * shape.h * shape.w + y_ * shape.w + x_]);
+        const float g = static_cast<const float>(a[b_ * shape.c * shape.h * shape.w + 1 * shape.h * shape.w + y_ * shape.w + x_]);
+        const float b = static_cast<const float>(a[b_ * shape.c * shape.h * shape.w + 2 * shape.h * shape.w + y_ * shape.w + x_]);
+        float alpha = 255;
+        if (has_alpha_old) {
+            alpha = static_cast<const float>(a[b_ * shape.c * shape.h * shape.w + 3 * shape.h * shape.w + y_ * shape.w + x_]);
+
+        }
+        UINT8 grey = static_cast<UINT8>(pow((pow(r, gamma) + pow(g * float(1.5), gamma) + pow(float(0.6) * b, gamma)) / (1 + pow(1.5, gamma) + pow(0.6, gamma)), (1 / gamma)));
+        switch (channels_r) {
+        case 1: {
+            out[b_ * channels_r * shape.h * shape.w + y_ * shape.w + x_] = grey;
+            break;
+        }
+        case 2: {
+            out[b_ * channels_r * shape.h * shape.w + y_ * shape.w + x_] = grey;
+            out[b_ * channels_r * shape.h * shape.w + 1 * shape.h * shape.w + y_ * shape.w + x_] = alpha;
+            break;
+        }
+        case 3: {
+            out[b_ * channels_r * shape.h * shape.w + y_ * shape.w + x_] = grey;
+            out[b_ * channels_r * shape.h * shape.w + 1 * shape.h * shape.w + y_ * shape.w + x_] = grey;
+            out[b_ * channels_r * shape.h * shape.w + 2 * shape.h * shape.w + y_ * shape.w + x_] = grey;
+            break;
+        }
+        case 4: {
+            out[b_ * channels_r * shape.h * shape.w + y_ * shape.w + x_] = grey;
+            out[b_ * channels_r * shape.h * shape.w + 1 * shape.h * shape.w + y_ * shape.w + x_] = grey;
+            out[b_ * channels_r * shape.h * shape.w + 2 * shape.h * shape.w + y_ * shape.w + x_] = grey;
+            out[b_ * channels_r * shape.h * shape.w + 3 * shape.h * shape.w + y_ * shape.w + x_] = alpha;
+            break;
+        }
+
+        }
+
+    }
+
+}
+void uint8_to_uint8_grey_cpu(const int N, const UINT8* a, const Shape& shape, const int& channels, const bool has_alpha_old, float gamma, UINT8* out, const bool& cf) {
+    if (cf)
+    {
+        uint8_to_uint8_grey_nhwc_cpu_(N, a, shape.c, channels, has_alpha_old, gamma, out);
+    }
+    else
+    {
+        uint8_to_uint8_grey_nchw_cpu_(N, a, shape, channels, has_alpha_old, gamma, out);
+    }
+
 }

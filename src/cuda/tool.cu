@@ -177,7 +177,7 @@ void uint8_to_uint8_scale_gpu(const int N, const UINT8* a, const Shape& shape, c
 }
 
 __global__ void random_crop_kernel_gpu_(const int n, const int c, const int oh, const int ow,
-    const int h, const int w, const int p, const UINT32* rh, const UINT32* rw, const UINT8* a, UINT8* y, int* m) {
+    const int h, const int w, const int p, const INT32* rh, const INT32* rw, const UINT8* a, UINT8* y, int* m) {
 
     CUDA_KERNEL_LOOP(index, n) {
 
@@ -185,15 +185,6 @@ __global__ void random_crop_kernel_gpu_(const int n, const int c, const int oh, 
         int bDim = w * h * c;
 
         int batch = index / bDim;
-
-        int sw = 0;
-        int sh = 0;
-        if (p > 0)
-        {
-            sh = static_cast<int>(rh[batch]) % ((oh + 2 * p) - h);
-            sw = static_cast<int>(rw[batch]) % ((ow + 2 * p) - w);
-            //printf("random_crop_kernel_gpu_:%d %d %d %d\n",rh[batch], rw[batch], sh, sw);
-        }
 
         int tmpBIdx = (index % bDim);
         int channels = tmpBIdx / spDim;
@@ -203,12 +194,10 @@ __global__ void random_crop_kernel_gpu_(const int n, const int c, const int oh, 
 
         int inputH = outH;
         int inputW = outW;
-        float v = 0;
+        UINT8 v = 0;
 
-        int moveH = sh - p;
-        int moveW = sw - p;
-        m[batch * 2] = moveH;
-        m[batch * 2 + 1] = moveW;
+        int moveH = rh[batch];
+        int moveW = rw[batch];
 
         inputH = moveH + outH;
         inputW = moveW + outW;
@@ -224,7 +213,7 @@ __global__ void random_crop_kernel_gpu_(const int n, const int c, const int oh, 
 }
 
 void random_crop_gpu(const int N, const int channels, const int oh, const int ow,
-    const int h, const int w, const int p, const UINT32* rh, const UINT32* rw, const UINT8* a, UINT8* y, int* m) {
+    const int h, const int w, const int p, const INT32* rh, const INT32* rw, const UINT8* a, UINT8* y, int* m) {
     // NOLINT_NEXT_LINE(whitespace/operators)
 
     random_crop_kernel_gpu_ << <NUM_BLOCKS(N), MAX_TREADS_PER_BLOCK, 0, AnnoaCuda::Stream() >> > (N, channels, oh, ow, h, w, p, rh, rw, a, y, m);
@@ -233,7 +222,7 @@ void random_crop_gpu(const int N, const int channels, const int oh, const int ow
 }
 
 __global__ void random_crop_nhwc_kernel_gpu_(const int n, const int c, const int oh, const int ow,
-    const int h, const int w, const int p, const UINT32* rh, const UINT32* rw, const UINT8* a, UINT8* y, int* m) {
+    const int h, const int w, const int p, const INT32* rh, const INT32* rw, const UINT8* a, UINT8* y, int* m) {
 
     CUDA_KERNEL_LOOP(index, n) {
 
@@ -241,16 +230,7 @@ __global__ void random_crop_nhwc_kernel_gpu_(const int n, const int c, const int
         int bDim = w * h * c;
 
         int batch = index / bDim;
-
-        int sw = 0;
-        int sh = 0;
-        if (p > 0)
-        {
-            sh = static_cast<int>(rh[batch]) % ((oh + 2 * p) - h);
-            sw = static_cast<int>(rw[batch]) % ((ow + 2 * p) - w);
-            //printf("random_crop_nhwc_kernel_gpu_:%d %d\n", sh, sw);
-        }
-
+        
         int tmpBIdx = (index % bDim);
 
         int channels = tmpBIdx % c;
@@ -263,12 +243,10 @@ __global__ void random_crop_nhwc_kernel_gpu_(const int n, const int c, const int
 
         int inputH = outH;
         int inputW = outW;
-        float v = 0;
+        UINT8 v = 0;
 
-        int moveH = sh - p;
-        int moveW = sw - p;
-        m[batch * 2] = moveH;
-        m[batch * 2 + 1] = moveW;
+        int moveH = rh[batch];
+        int moveW = rw[batch];
 
         inputH = moveH + outH;
         inputW = moveW + outW;
@@ -277,14 +255,14 @@ __global__ void random_crop_nhwc_kernel_gpu_(const int n, const int c, const int
 
         if (inputH >= 0 && inputH < (int)oh && inputW >= 0 && inputW < (int)ow) {
 
-            v = a[batch * bIDim + c * inputH * (int)ow + inputW * c + channels];
+            v = a[batch * bIDim + inputH * (int)ow * c  + inputW * c + channels];
         }
         y[index] = v;
     }
 }
 
 void random_crop_nhwc_gpu(const int N, const int channels, const int oh, const int ow,
-    const int h, const int w, const int p, const UINT32* rh, const UINT32* rw, const UINT8* a, UINT8* y, int* m) {
+    const int h, const int w, const int p, const INT32* rh, const INT32* rw, const UINT8* a, UINT8* y, int* m) {
     // NOLINT_NEXT_LINE(whitespace/operators)
 
     random_crop_nhwc_kernel_gpu_ << <NUM_BLOCKS(N), MAX_TREADS_PER_BLOCK, 0, AnnoaCuda::Stream() >> > (N, channels, oh, ow, h, w, p, rh, rw, a, y, m);

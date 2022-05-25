@@ -14,7 +14,7 @@ declare module 'annoa-image' {
         MateData():Float32Array;
         ScaleSize(height:number, width:number):this;
         ColorHSV(hue:number, saturation:number, value:number):this;
-        CaptureImgByBoundingBox(boundingBox:Array<Float32Array | Uint32Array>, batch_idx:number):Image[];
+        CaptureImgByBoundingBox(boundingBox:Array<Float32Array | Uint32Array>, batch_idx:number):Image[];        GreyScale(remove_alpha?:boolean, rgb_merged?:boolean, gamma?:number):this;
 
         ScaleSizeGPU(height:number, width:number):this;
         RandomCropGPU(height:number, width:number, pad:number):Int32Array;

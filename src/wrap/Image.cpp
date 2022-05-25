@@ -1,3 +1,5 @@
+
+#include <random>
 #include "../../include/wrap/Image.h"
 #include "../../include/wrap/MateData.h"
 
@@ -21,6 +23,7 @@ namespace annoa
                 InstanceMethod("ScaleSize", &ImageWrap::ScaleSize),
                 InstanceMethod("ColorHSV", &ImageWrap::ColorHSV),
                 InstanceMethod("CaptureImgByBoundingBox", &ImageWrap::CaptureImgByBoundingBox),
+                InstanceMethod("GreyScale", &ImageWrap::GreyScale),
 
                 InstanceMethod("ScaleSizeGPU", &ImageWrap::ScaleSizeGPU),
                 InstanceMethod("RandomCropGPU", &ImageWrap::RandomCropGPU),
@@ -48,18 +51,26 @@ namespace annoa
         }
 
         int n = 0;
+        _has_alpha = false;
         int c = info[0].ToNumber();
         int h = info[1].ToNumber();
         int w = info[2].ToNumber();
+        if (length == 4 && info[3].IsBoolean()) {
+            _has_alpha = info[3].ToBoolean();
+        }
         if (c < 1 || c > 4) {
             Napi::TypeError::New(env, "channel error expected").ThrowAsJavaScriptException();
             return;
+        }
+        if (c == 4) {
+            _has_alpha = true;
         }
         _shape.init(n,c,h,w);
         info.This().ToObject().Set("n", n);
         info.This().ToObject().Set("c", c);
         info.This().ToObject().Set("h", h);
         info.This().ToObject().Set("w", w);
+        info.This().ToObject().Set("has_alpha", _has_alpha);
         info.This().ToObject().Set("flag", _flag);
         info.This().ToObject().Set("data", env.Null());
     }
@@ -182,21 +193,31 @@ namespace annoa
             return env.Null();
         }
 
-        if (_shape.channel() != 4) {
+        if (_shape.channel() != 4 && !_has_alpha) {
 
-            return env.Null();
+            return info.This();
         }
-        _shape.c = 3;
-        Napi::Uint8Array data_array = Napi::Uint8Array::New(env, _shape.data_size());
+        if (!_has_alpha) {
+            return info.This();
+        }
+        const int c = _shape.c - 1;
+        _has_alpha = false;
+        int length = _shape.data_size();
+        UINT32 pix_count = _shape.grid_size();
+        Napi::Uint8Array out = Napi::Uint8Array::New(env, (pix_count * c));
+        UINT8 * result = reinterpret_cast<UINT8 *>(out.ArrayBuffer().Data());
         if (_flag) {
-            remove_alpha_cpu(_shape.grid_size(), (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()));
+            remove_alpha_cpu(pix_count, c, (const UINT8*)(_data), result);
         }
         else {
-            remove_alpha_chw_cpu(_shape.number(), _shape.channel_size() * 4, _shape.image_size(), (const UINT8*)(_data), (UINT8*)(data_array.ArrayBuffer().Data()));
+            remove_alpha_chw_cpu(_shape.number(), _shape.image_size(), c * _shape.channel_size(), (const UINT8*)(_data), result);
             //memcpy(data_array.ArrayBuffer().Data(), _data, data_array.ByteLength());
         }
-        _data = data_array.ArrayBuffer().Data();
-        info.This().ToObject().Set("data", data_array);
+        _shape.c = c;
+        _data = result;
+        info.This().ToObject().Set("has_alpha", _has_alpha);
+        info.This().ToObject().Set("c", c);
+        info.This().ToObject().Set("data", out);
         return info.This();
     }
     Napi::Value ImageWrap::HorizontalFlip(const Napi::CallbackInfo& info) {
@@ -637,6 +658,69 @@ namespace annoa
         self.Set("data", array_);
         _data = array_.ArrayBuffer().Data();
     }
+
+    Napi::Value ImageWrap::GreyScale(const Napi::CallbackInfo& args)
+    {
+        Napi::Env env = args.Env();
+
+        Napi::Value data = args.This().ToObject().Get("data");
+
+        if (data.IsNull()) {
+
+            Napi::TypeError::New(env, "have no image data expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        if (_shape.c < 3) {
+
+            Napi::TypeError::New(env, "rgb data are not intact expected").ThrowAsJavaScriptException();
+            return env.Null();
+        }
+
+        bool remove_alpha = false;
+        bool rgb_merge = false;
+        float gamma = 2.2f;
+        if (args.Length() > 0 && args[0].IsBoolean())
+        {
+            remove_alpha = args[0].ToBoolean();
+        }
+        if (args.Length() > 1 && args[1].IsBoolean())
+        {
+            rgb_merge = args[1].ToBoolean();
+        }
+
+        if (args.Length() > 2 && !args[2].IsNumber())
+        {
+            gamma = args[2].ToNumber().FloatValue();
+        }
+        int channel = _shape.c;
+        bool has_alpha_old = _has_alpha;
+        if (!has_alpha_old) {
+            remove_alpha = true;
+        }
+        if (remove_alpha && _has_alpha) {
+            channel -= 1;
+            _has_alpha = false;
+        }
+        if (rgb_merge) {
+            channel = _has_alpha ? 2 : 1;
+        }
+
+        UINT32 length = _shape.data_size();
+        UINT32 pixels = _shape.grid_size();
+        UINT32 channels = _shape.channel();
+        UINT8* img_data = reinterpret_cast<UINT8*>(_data);
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, channel * pixels);
+        UINT8* result = (UINT8*)outData.ArrayBuffer().Data();
+        uint8_to_uint8_grey_cpu(pixels, img_data, _shape, channel, has_alpha_old, gamma, result, _flag);
+        _shape.c = channel;
+        _data = result;
+        args.This().ToObject().Set("has_alpha", _has_alpha);
+        args.This().ToObject().Set("c", channel);
+        args.This().ToObject().Set("data", outData);
+
+        return args.This();
+    }
     Napi::Value ImageWrap::ScaleSizeGPU(const Napi::CallbackInfo& info) {
 
         Napi::Env env = info.Env();
@@ -734,43 +818,53 @@ namespace annoa
 
             throw Napi::TypeError::New(env, "Wrong w check w > ow + 2 * p of arguments");
         }
+        int size_o = _shape.data_size();
         _shape.h = h;
         _shape.w = w;
         int size = _shape.data_size();
         int number = _shape.number();
         Napi::Uint8Array data_array = Napi::Uint8Array::New(env, _shape.data_size());
         Napi::Int32Array move_array = Napi::Int32Array::New(env, number * 2);
-        void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(data_array.ByteLength(), _data);
+
+        std::vector<INT32> random_h(number);
+        std::vector<INT32> random_w(number);
+        std::random_device rd;
+        int* move_ptr = static_cast<int*>(move_array.ArrayBuffer().Data());
+        if (p > 0)
+        {
+            for (int ndx = 0; ndx < number; ndx++) {
+
+                random_h[ndx] = (rd() % ((oh + 2 * p) - h)) - p;
+                random_w[ndx] = (rd() % ((ow + 2 * p) - w)) - p;
+                move_ptr[ndx * 2] = random_h[ndx];
+                move_ptr[ndx * 2 + 1] = random_w[ndx];
+            }
+        }
+
+        void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(size_o * sizeof(UINT8), _data);
         void* new_gpu = AnnoaCuda::AnnoaMallocCopyDevice(data_array.ByteLength());
-        void* new_move_gpu = AnnoaCuda::AnnoaMallocCopyDevice(move_array.ByteLength());
-        std::vector<UINT32> random_h(number);
-        gen_random_data(number, 65535, random_h.data());
-        //for (int i = 0; i < number; i++) {
-        //    printf("random_h gen_random_data[%d]:%u\n", i, random_h[i]);
-        //}
-        std::vector<UINT32> random_w(number);
-        gen_random_data(number, 65535, random_w.data());
-        //for (int i = 0; i < number; i++) {
-        //    printf("random_w gen_random_data[%d]:%u\n", i, random_w[i]);
-        //}
+        void* new_move_gpu = nullptr;// AnnoaCuda::AnnoaMallocCopyDevice(move_array.ByteLength());
+
         void* random_h_gpu = AnnoaCuda::AnnoaMallocCopyDevice(number * sizeof(UINT32), random_h.data());
         void* random_w_gpu = AnnoaCuda::AnnoaMallocCopyDevice(number * sizeof(UINT32), random_w.data());
 
         //printf("random_crop_gpu random_crop_gpu:%d %d %d %d %d", oh, ow, h, w, p);
         if (!_flag) {
-            random_crop_gpu(size, channel, oh, ow, h, w, p, (const UINT32*)random_h_gpu, (const UINT32*)random_w_gpu, (const UINT8*)(source_gpu), (UINT8*)(new_gpu), (int*)(new_move_gpu));
+            random_crop_gpu(size, channel, oh, ow, h, w, p, (const INT32*)random_h_gpu, (const INT32*)random_w_gpu, (const UINT8*)(source_gpu), (UINT8*)(new_gpu), (int*)(new_move_gpu));
         }
         else {
-            random_crop_nhwc_gpu(size, channel, oh, ow, h, w, p, (const UINT32*)random_h_gpu, (const UINT32*)random_w_gpu, (const UINT8*)(source_gpu), (UINT8*)(new_gpu), (int*)(new_move_gpu));
+            random_crop_nhwc_gpu(size, channel, oh, ow, h, w, p, (const INT32*)random_h_gpu, (const INT32*)random_w_gpu, (const UINT8*)(source_gpu), (UINT8*)(new_gpu), (int*)(new_move_gpu));
         }
         checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
         AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, data_array.ArrayBuffer().Data(), data_array.ByteLength());
-        AnnoaCuda::AnnoaDeviceCopyHost(new_move_gpu, move_array.ArrayBuffer().Data(), move_array.ByteLength());
+        //AnnoaCuda::AnnoaDeviceCopyHost(new_move_gpu, move_array.ArrayBuffer().Data(), move_array.ByteLength());
         AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
-        AnnoaCuda::AnnoaFreeMemDevice(new_move_gpu);
+        //AnnoaCuda::AnnoaFreeMemDevice(new_move_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(random_h_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(random_w_gpu);
+        random_h.clear();
+        random_w.clear();
         source_gpu = nullptr;
         new_gpu = nullptr;
         new_move_gpu = nullptr;
