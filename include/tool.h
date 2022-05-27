@@ -5,7 +5,9 @@
 #include "./cuda/cuda.h"
 #include "./util.h"
 
-void remove_alpha_cpu(const int N, const int c, const UINT8* a, UINT8* y);void remove_alpha_chw_cpu(const int N, const int dima, const int dimy, const UINT8* a, UINT8* y);
+void remove_alpha_cpu(const int N, const int c, const UINT8* a, UINT8* y);
+void remove_alpha_chw_cpu(const int N, const int dima, const int dimy, const UINT8* a, UINT8* y);
+void draw_board_by_point(const int N, const int c, const int bh, const int bw, const int ch, const int cw, const UINT8* board, const UINT8* chess, const UINT32* point, const UINT8* idx, UINT8* image);
 void uint8_to_float_convert_cpu(const int N, const float scale, const UINT8* a, float* y);
 void uint8_to_float_convert_norm_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const UINT8* a, float* y);
 void uint8_to_float_convert_norm_o_cpu(const int N, const float scale, int batch, int channels, const float* m, const float* s, const UINT8* a, float* y);
