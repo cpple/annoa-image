@@ -1,7 +1,7 @@
 declare module 'annoa-image' {
 
     class Image {
-        constructor(channels:number, height:number, width:number);
+        constructor(channels:number, height:number, width:number, has_alpha?:boolean);
 
         GetNCHWData():Uint8Array;
         GetNHWCData():Uint8Array;

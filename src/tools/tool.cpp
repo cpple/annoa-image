@@ -5,6 +5,38 @@
 #include "../../include/tool.h"
 #include "../../include/util.h"
 
+void draw_board_by_point_kernel_(const int n, const int c, const int bh, const int bw, const int ch, const int cw, const UINT8* board, const UINT8* chess, const UINT32* point, const UINT8* idx, UINT8* image) {
+
+    CPU_KERNEL_LOOP(index, n) {
+        int pice = index / (ch * cw);
+        int chessVal = idx[pice];
+        if (chessVal < 1) {
+            continue;
+        }
+        chessVal -= 1;
+        int pixel = index % (ch * cw);
+        int y = pixel / cw;
+        int x = pixel % cw;
+        int chessOffset = (chessVal)* c * ch * cw;
+        int offsetX = static_cast<int>(point[pice * 2]) + x;
+        int offsetY = static_cast<int>(point[pice * 2 + 1]) + y;
+
+        if (offsetY > bh) {
+            continue;
+        }
+        int pixel_board_idx = 0 * bh * bw + offsetY * bw + offsetX;
+        int pixel_chess_idx = 0 * ch * cw + y * cw + x;
+
+        UINT8 alpha = chess[chessOffset + 1 * ch * cw + y * cw + x];
+        if (alpha) {
+            image[pixel_board_idx] = static_cast<UINT8>((alpha / 255) * chess[chessOffset + pixel_chess_idx]);
+        }
+    }
+}
+void draw_board_by_point(const int N, const int c, const int bh, const int bw, const int ch, const int cw, const UINT8* board, const UINT8* chess, const UINT32* point, const UINT8* idx, UINT8* image) {
+
+    draw_board_by_point_kernel_(N, c, bh, bw, ch, cw, board, chess, point, idx, image);
+}
 void nchw_to_nhwc_kernel_cpu_(const int n, const int c, const int h, const int w, const UINT8* a, UINT8* y) {
     //int b_;
     //int p_index;

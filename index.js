@@ -9,6 +9,7 @@ let exp = {
     MateData:bindings.MateData,
     imgRandomCropHorizontalFlipNormalize:bindings.imgRandomCropHorizontalFlipNormalize,
     imgNormalize:bindings.imgNormalize,
-    imgScale:bindings.imgScale
+    imgScale:bindings.imgScale,
+    ChessBoardDraw:bindings.ChessBoardDraw
 };
 module.exports = exp;
