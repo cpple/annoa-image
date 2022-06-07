@@ -514,6 +514,61 @@ namespace annoa
         return outData;
     }
 
+    Napi::Value ChessBoardDrawGPU(const Napi::CallbackInfo& args)
+    {
+        Napi::Env env = args.Env();
+
+        if (args.Length() < 3)
+        {
+            throw Napi::TypeError::New(env, "Wrong number of arguments");
+        }
+
+        if (!IsTypeArray(args[0], napi_uint8_array) || !IsTypeArray(args[1], napi_uint8_array) || !IsTypeArray(args[2], napi_uint8_array) || !IsTypeArray(args[3], napi_uint32_array) || !args[4].IsNumber() || !args[5].IsNumber() || !args[6].IsNumber() || !args[7].IsNumber() || !args[8].IsNumber())
+        {
+            throw Napi::TypeError::New(env, "Wrong arguments");
+        }
+
+        Napi::Uint8Array boardU8 = args[0].As<Napi::Uint8Array>();
+        Napi::Uint8Array chessU8 = args[1].As<Napi::Uint8Array>();
+        Napi::Uint8Array idxU8 = args[2].As<Napi::Uint8Array>();
+        Napi::Uint32Array pointU32 = args[3].As<Napi::Uint32Array>();
+
+        UINT32 c = args[4].ToNumber().Uint32Value();
+        UINT32 bh = args[5].ToNumber().Uint32Value();
+        UINT32 bw = args[6].ToNumber().Uint32Value();
+        UINT32 ch = args[7].ToNumber().Uint32Value();
+        UINT32 cw = args[8].ToNumber().Uint32Value();
+
+        Napi::Uint8Array outData = Napi::Uint8Array::New(env, boardU8.ElementLength());
+        UINT8* board = (UINT8*)boardU8.ArrayBuffer().Data();
+        UINT8* chess = (UINT8*)chessU8.ArrayBuffer().Data();
+        UINT8* idx = (UINT8*)idxU8.ArrayBuffer().Data();
+        UINT32* point = (UINT32*)pointU32.ArrayBuffer().Data();
+        UINT8* image = (UINT8*)outData.ArrayBuffer().Data();
+        int N = idxU8.ElementLength() * ch * cw;
+
+        void* board_gpu = AnnoaCuda::AnnoaMallocCopyDevice(boardU8.ArrayBuffer().ByteLength(), board);
+        void* chess_gpu = AnnoaCuda::AnnoaMallocCopyDevice(chessU8.ArrayBuffer().ByteLength(), chess);
+        void* idx_gpu = AnnoaCuda::AnnoaMallocCopyDevice(idxU8.ArrayBuffer().ByteLength(), idx);
+        void* point_gpu = AnnoaCuda::AnnoaMallocCopyDevice(pointU32.ArrayBuffer().ByteLength(), point);
+        void* image_gpu = AnnoaCuda::AnnoaMallocCopyDevice(outData.ArrayBuffer().ByteLength(), board);
+        //memcpy(image, board, boardU8.ByteLength());
+
+        draw_board_by_point_gpu(N, c, bh, bw, ch, cw, (const UINT8*)board_gpu, (const UINT8*)chess_gpu, (const UINT32*)point_gpu, (const UINT8*)idx_gpu, (UINT8*)image_gpu);
+        AnnoaCuda::AnnoaDeviceCopyHost(image_gpu, image, outData.ArrayBuffer().ByteLength());
+        AnnoaCuda::AnnoaFreeMemDevice(board_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(chess_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(idx_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(point_gpu);
+        AnnoaCuda::AnnoaFreeMemDevice(image_gpu);
+        board_gpu = nullptr;
+        chess_gpu = nullptr;
+        idx_gpu = nullptr;
+        point_gpu = nullptr;
+        image_gpu = nullptr;
+        return outData;
+    }
+
     Napi::Object init(Napi::Env env, Napi::Object exports) {
 
         AnnoaCuda::init();
@@ -525,6 +580,7 @@ namespace annoa
         exports.Set(Napi::String::New(env, "imgScale"), Napi::Function::New(env, imgScale));
         exports.Set(Napi::String::New(env, "imgColorHSV"), Napi::Function::New(env, imgColorHSV));
         exports.Set(Napi::String::New(env, "ChessBoardDraw"), Napi::Function::New(env, ChessBoardDraw));
+        exports.Set(Napi::String::New(env, "ChessBoardDrawGPU"), Napi::Function::New(env, ChessBoardDrawGPU));
         exports.Set(Napi::String::New(env, "test"), Napi::Function::New(env, test));
 
         ImageWrap::Init(env, exports, "Image");

@@ -585,3 +585,38 @@ void uint8_to_float_convert_norm_o_gpu(const int N, const float scale, int batch
     CUDA_POST_KERNEL_CHECK;
     checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
 }
+
+__global__ void draw_board_by_point_gpu_kernel_(const int n, const int c, const int bh, const int bw, const int ch, const int cw, const UINT8* board, const UINT8* chess, const UINT32* point, const UINT8* idx, UINT8* image) {
+
+    CUDA_KERNEL_LOOP(index, n) {
+        int pice = index / (ch * cw);
+        int chessVal = static_cast<int>(idx[pice]);
+        if (chessVal < 1) {
+            continue;
+        }
+        chessVal -= 1;
+        int pixel = index % (ch * cw);
+        int y = pixel / cw;
+        int x = pixel % cw;
+        int chessOffset = (chessVal)* c * ch * cw;
+        int offsetX = static_cast<int>(point[pice * 2]) + x;
+        int offsetY = static_cast<int>(point[pice * 2 + 1]) + y;
+
+        if (offsetY > bh || offsetX > bw) {
+            continue;
+        }
+        int pixel_board_idx = 0 * bh * bw + offsetY * bw + offsetX;
+        int pixel_chess_idx = 0 * ch * cw + y * cw + x;
+
+        UINT8 alpha = chess[chessOffset + 1 * ch * cw + y * cw + x];
+        if (alpha) {
+            image[pixel_board_idx] = static_cast<UINT8>((alpha / 255) * chess[chessOffset + pixel_chess_idx]);
+        }
+    }
+}
+void draw_board_by_point_gpu(const int N, const int c, const int bh, const int bw, const int ch, const int cw, const UINT8* board, const UINT8* chess, const UINT32* point, const UINT8* idx, UINT8* image) {
+
+    draw_board_by_point_gpu_kernel_ << <NUM_BLOCKS(N), MAX_TREADS_PER_BLOCK, 0, AnnoaCuda::Stream() >> > (N, c, bh, bw, ch, cw, board, chess, point, idx, image);
+    CUDA_POST_KERNEL_CHECK;
+    checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
+}

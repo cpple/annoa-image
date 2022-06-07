@@ -9,7 +9,7 @@ void draw_board_by_point_kernel_(const int n, const int c, const int bh, const i
 
     CPU_KERNEL_LOOP(index, n) {
         int pice = index / (ch * cw);
-        int chessVal = idx[pice];
+        int chessVal = static_cast<int>(idx[pice]);
         if (chessVal < 1) {
             continue;
         }
@@ -21,7 +21,7 @@ void draw_board_by_point_kernel_(const int n, const int c, const int bh, const i
         int offsetX = static_cast<int>(point[pice * 2]) + x;
         int offsetY = static_cast<int>(point[pice * 2 + 1]) + y;
 
-        if (offsetY > bh) {
+        if (offsetY > bh || offsetX > bw) {
             continue;
         }
         int pixel_board_idx = 0 * bh * bw + offsetY * bw + offsetX;

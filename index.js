@@ -10,6 +10,7 @@ let exp = {
     imgRandomCropHorizontalFlipNormalize:bindings.imgRandomCropHorizontalFlipNormalize,
     imgNormalize:bindings.imgNormalize,
     imgScale:bindings.imgScale,
-    ChessBoardDraw:bindings.ChessBoardDraw
+    ChessBoardDraw:bindings.ChessBoardDraw,
+    ChessBoardDrawGPU:bindings.ChessBoardDrawGPU
 };
 module.exports = exp;

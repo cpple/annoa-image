@@ -32,6 +32,7 @@ void gen_random_data(const int n, UINT32 mask, UINT32* data);
 void uint8_to_uint8_grey_cpu(const int N, const UINT8* a, const Shape& shape, const int& channels, const bool has_alpha_old, float gamma, UINT8* out, const bool& cf);
 
 //gpu
+void draw_board_by_point_gpu(const int N, const int c, const int bh, const int bw, const int ch, const int cw, const UINT8* board, const UINT8* chess, const UINT32* point, const UINT8* idx, UINT8* image);
 void uint8_to_uint8_scale_gpu(const int N, const UINT8* a, const Shape& shape, const int sh, const int sw, UINT8* y, const bool& cf);
 void random_crop_gpu(const int N, const int channels, const int oh, const int ow,
     const int h, const int w, const int p, const INT32* rh, const INT32* rw, const UINT8* a, UINT8* y, INT32* m);
