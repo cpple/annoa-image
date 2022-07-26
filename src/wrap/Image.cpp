@@ -768,6 +768,8 @@ namespace annoa
         void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(DIM_SIZE_O, img_data);
         void* new_gpu = AnnoaCuda::AnnoaMallocCopyDevice(DIM_SIZE_N, result);
         uint8_to_uint8_scale_gpu(length, (const UINT8*)source_gpu, _shape, scaleh, scalew, (UINT8*)new_gpu, _flag);
+
+        CUDA_POST_KERNEL_CHECK;
         AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, result, DIM_SIZE_N);
         checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
         AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
@@ -855,6 +857,8 @@ namespace annoa
         else {
             random_crop_nhwc_gpu(size, channel, oh, ow, h, w, p, (const INT32*)random_h_gpu, (const INT32*)random_w_gpu, (const UINT8*)(source_gpu), (UINT8*)(new_gpu), (int*)(new_move_gpu));
         }
+
+        CUDA_POST_KERNEL_CHECK;
         checkCudaErrors(cudaStreamSynchronize(AnnoaCuda::Stream()));
         AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, data_array.ArrayBuffer().Data(), data_array.ByteLength());
         //AnnoaCuda::AnnoaDeviceCopyHost(new_move_gpu, move_array.ArrayBuffer().Data(), move_array.ByteLength());
@@ -896,6 +900,8 @@ namespace annoa
         else {
             horizontal_flip_nhwc_gpu(_shape.grid_size(), _shape.channel(), _shape.height(), _shape.width(), (UINT8*)(source_gpu));
         }
+
+        CUDA_POST_KERNEL_CHECK;
         AnnoaCuda::AnnoaDeviceCopyHost(source_gpu, _data, _shape.data_size() * sizeof(UINT8));
         AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
         source_gpu = nullptr;
@@ -943,6 +949,8 @@ namespace annoa
         void* source_gpu = AnnoaCuda::AnnoaMallocCopyDevice(outData.ByteLength(), img_data);
         void* new_gpu = AnnoaCuda::AnnoaMallocCopyDevice(outData.ByteLength());
         uint8_to_uint8_color_gpu(pixels, (UINT8*)source_gpu, _shape, hue, sat, val, (UINT8*)new_gpu, _flag);
+
+        CUDA_POST_KERNEL_CHECK;
         AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, result, outData.ByteLength());
         AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
@@ -1042,6 +1050,7 @@ namespace annoa
         {
             uint8_to_float_convert_norm_gpu(_shape.data_size(), scale, _shape.number(), lengthM, (const float*)mean_gpu, (const float*)stdv_gpu, (UINT8*)source_gpu, (float*)new_gpu);
         }
+        CUDA_POST_KERNEL_CHECK;
         AnnoaCuda::AnnoaDeviceCopyHost(new_gpu, result, outData.ByteLength());
         AnnoaCuda::AnnoaFreeMemDevice(source_gpu);
         AnnoaCuda::AnnoaFreeMemDevice(new_gpu);
